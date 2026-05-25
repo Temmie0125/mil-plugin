@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <link rel="shortcut icon" href="#" />
+    <link rel="stylesheet" type="text/css" href="{{_res_path}}html/common/common.css" />
+    <link rel="stylesheet" type="text/css" href="{{_res_path}}html/ill/ill.css" />
+    <style>
+        /* ===== mil-plugin 曲绘水印样式 ===== */
+        body {
+            margin: 0;
+            padding: 0;
+            width: fit-content;
+            height: fit-content;
+            overflow: hidden;
+            background: transparent;
+        }
+        .ill-wrapper {
+            position: relative;
+            display: inline-block;
+            line-height: 0;
+        }
+        .ill-img {
+            display: block;
+        }
+        .watermark {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            gap: 0.4em;
+            color: #ffffff;
+            font-family: 'Milthm', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+            white-space: nowrap;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+
+        .wm-brand {
+            font-weight: 700;
+            text-shadow: 0 0 15px #00baff;
+            letter-spacing: 0.05em;
+        }
+
+        .wm-sep {
+            opacity: 0.5;
+            font-weight: 300;
+        }
+
+        .wm-illustrator {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.25; 
+            text-align: left;
+            font-weight: 400;
+            opacity: 0.92;
+            gap: 0.1em;
+        }
+
+        .wm-ill-label {
+            font-size: 0.7em; 
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            opacity: 0.85;
+            text-shadow: 0 0 6px rgba(0,0,0,0.2);
+            white-space: nowrap;
+        }
+
+        .wm-ill-name {
+            font-size: 0.9em;           
+            font-weight: 500;
+            text-shadow: 0 0 6px rgba(0,0,0,0.3);
+            white-space: nowrap;
+        }
+
+    </style>
+</head>
+<body>
+<div class="ill-wrapper">
+    <img class="ill-img" src="{{illustration}}" alt="illustration">
+    <div class="watermark">
+        <span class="wm-brand">Milthm</span>
+        <span class="wm-sep">|</span>
+        <div class="wm-illustrator">
+            <div class="wm-ill-label">Illustrator:</div>
+            <div class="wm-ill-name">{{illustrator}}</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        var img = document.querySelector('.ill-img');
+        if (!img) return;
+
+        function setWatermarkLayout() {
+            var imgHeight = img.naturalHeight;
+            if (!imgHeight || imgHeight <= 0) {
+                setTimeout(setWatermarkLayout, 50);
+                return;
+            }
+
+            var watermark = document.querySelector('.watermark');
+            if (!watermark) return;
+            var baseWatermarkHeight = Math.max(imgHeight * 0.065, 18);
+            var brandFontSizeRaw = baseWatermarkHeight * 0.75;
+            var rightFontSizeRaw = brandFontSizeRaw * 0.52;   // 右侧字体为品牌字体0.52倍，使总高度安全 (约两行高度 = rightFontSize*2.5)
+            var estimatedRightBlockHeight = (rightFontSizeRaw * 1.25) * 2;  // 2行总高度
+            var padYEst = brandFontSizeRaw * 0.25;
+            var requiredInnerHeight = estimatedRightBlockHeight + padYEst * 2;
+            var finalWatermarkHeight = baseWatermarkHeight;
+            if (requiredInnerHeight > baseWatermarkHeight) {
+                // 增加量不超过原水印高度的35%，且尽量不超过图片高度12%
+                var extraHeight = Math.min(requiredInnerHeight - baseWatermarkHeight, baseWatermarkHeight * 0.35);
+                finalWatermarkHeight = baseWatermarkHeight + extraHeight;
+                // 同时限制最大不超过图片高度12%，防止过分遮挡曲绘
+                var maxAllowed = imgHeight * 0.12;
+                if (finalWatermarkHeight > maxAllowed) finalWatermarkHeight = maxAllowed;
+                // 确保至少不小于 requiredInnerHeight (再保险)
+                if (finalWatermarkHeight < requiredInnerHeight) finalWatermarkHeight = requiredInnerHeight;
+            }
+            
+            var wmHeight = Math.ceil(finalWatermarkHeight);
+            var brandFontSize = Math.max(wmHeight * 0.75, 12);    // 最小12px，保证品牌可读
+            var rightContainerFontSize = Math.max(brandFontSize * 0.52, 9); // 最小9px，极小图片尚可辨识
+            
+            var padX = Math.max(brandFontSize * 0.7, 6);
+            var padY = Math.max(brandFontSize * 0.25, 3);
+            
+            var margin = Math.max(imgHeight * 0.015, 4);
+            
+            var borderRadius = Math.max(brandFontSize * 0.25, 4);
+            
+            watermark.style.height = wmHeight + 'px';
+            watermark.style.padding = padY + 'px ' + padX + 'px';
+            watermark.style.bottom = margin + 'px';
+            watermark.style.left = margin + 'px';
+            watermark.style.borderRadius = borderRadius + 'px';
+            var brandSpan = watermark.querySelector('.wm-brand');
+            var sepSpan = watermark.querySelector('.wm-sep');
+            if (brandSpan) brandSpan.style.fontSize = brandFontSize + 'px';
+            if (sepSpan) sepSpan.style.fontSize = brandFontSize + 'px';
+
+            var rightContainer = watermark.querySelector('.wm-illustrator');
+            if (rightContainer) {
+                rightContainer.style.fontSize = rightContainerFontSize + 'px';
+                rightContainer.style.lineHeight = '1.25';
+                rightContainer.style.gap = '0.1em';
+            }
+            
+            var illNameSpan = document.querySelector('.wm-ill-name');
+            var imgWidth = img.naturalWidth;
+            if (illNameSpan && imgWidth) {
+                var maxNameWidth = Math.max(imgWidth * 0.2, 100);
+                illNameSpan.style.maxWidth = maxNameWidth + 'px';
+                illNameSpan.style.overflow = 'hidden';
+                illNameSpan.style.textOverflow = 'ellipsis';
+                illNameSpan.style.whiteSpace = 'nowrap';
+            }
+            var illLabelSpan = document.querySelector('.wm-ill-label');
+            if (illLabelSpan && imgWidth) {
+                illLabelSpan.style.maxWidth = Math.max(imgWidth * 0.18, 80) + 'px';
+                illLabelSpan.style.overflow = 'hidden';
+                illLabelSpan.style.textOverflow = 'ellipsis';
+                illLabelSpan.style.whiteSpace = 'nowrap';
+            }
+        }
+        if (img.complete && img.naturalHeight > 0) {
+            setWatermarkLayout();
+        } else {
+            img.onload = function() {
+                setWatermarkLayout();
+            };
+            if (img.complete && img.naturalHeight === 0) {
+                setTimeout(setWatermarkLayout, 100);
+            }
+        }
+        window.addEventListener('resize', function() {
+            if (img.complete && img.naturalHeight) {
+                setWatermarkLayout();
+            } else {
+                img.onload = setWatermarkLayout;
+            }
+        });
+        if (window.MutationObserver) {
+            var observer = new MutationObserver(function(mutations) {
+                if (img.complete && img.naturalHeight) {
+                    setWatermarkLayout();
+                }
+            });
+            observer.observe(img, { attributes: true, attributeFilter: ['src'] });
+        }
+    })();
+</script>
+</body>
+</html>

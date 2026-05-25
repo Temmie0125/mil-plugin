@@ -188,7 +188,7 @@ async function renderAtlas(id) {
 }
 
 /**
- * 发送曲绘
+ * 发送曲绘（带水印）
  */
 async function sendIll(e, id) {
     let info = getInfo.info(id)
@@ -198,9 +198,14 @@ async function sendIll(e, id) {
     }
     let illPath = info.illustration
     if (illPath && fs.existsSync(illPath)) {
+        let illustrator = Array.isArray(info.illustrator) ? info.illustrator.join(', ') : info.illustrator || '未知'
+        let illImg = await picmodle.ill({
+            illustration: illPath,
+            illustrator
+        })
         send.send_with_At(e, [
-            segment.image(illPath),
-            `\n${info.song} - ${info.artist}\n画师：${Array.isArray(info.illustrator) ? info.illustrator.join(', ') : info.illustrator || '未知'}`
+            illImg,
+            `\n${info.song} - ${info.artist}\n画师：${illustrator}`
         ])
     } else {
         send.send_with_At(e, `未找到"${info.song}"的曲绘文件QAQ`)
@@ -208,7 +213,7 @@ async function sendIll(e, id) {
 }
 
 /**
- * 别名信息
+ * 别名信息（曲绘带水印）
  */
 async function makeNickMsg(e, id) {
     let info = getInfo.info(id)
@@ -228,9 +233,14 @@ async function makeNickMsg(e, id) {
     }
 
     let illPath = info.illustration
+    let illustrator = Array.isArray(info.illustrator) ? info.illustrator.join(', ') : info.illustrator || '未知'
     let msgParts = [`name: ${info.song}\n========\n已有别名：\n${[...nicks].slice(0, 30).join('\n') || '无'}`]
     if (illPath && fs.existsSync(illPath)) {
-        msgParts.unshift(segment.image(illPath))
+        let illImg = await picmodle.ill({
+            illustration: illPath,
+            illustrator
+        })
+        msgParts.unshift(illImg)
     }
     send.send_with_At(e, msgParts)
 }
