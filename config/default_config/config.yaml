@@ -28,7 +28,7 @@ isGuild: false
 #  ************ 【曲绘资源】 *************
 
 #  曲绘仓库地址（Git 克隆地址）
-illDownloadUrl: "https://github.com/Temmie0125/mil-plugin-ill"
+illDownloadUrl: "https://github.com/Temmie0125/mil-plugin-ill-low"
 
 #  GitHub 代理（留空或 false 则不使用）
 #  国内用户可设为 https://ghproxy.com/ 等加速站点
