@@ -1,0 +1,58 @@
+{{extend defaultLayout}}
+
+{{block 'css'}}
+<link rel="stylesheet" href="{{_res_path}}html/atlas/atlas.css">
+{{/block}}
+
+{{block 'main'}}
+
+<div class="atlas-container">
+    <div class="atlas-ill">
+        {{if illustration}}
+        <img src="{{illustration}}" alt="ill">
+        {{/if}}
+    </div>
+    <div class="atlas-info">
+        <div class="atlas-song-name" name="pvis">{{song}}</div>
+        <div class="atlas-artist">by {{artist}}</div>
+        {{if chapter_zh}}
+        <div class="atlas-chapter">{{chapter_zh}}</div>
+        {{/if}}
+        {{if illustrator && illustrator.length}}
+        <div class="atlas-chapter">Illust: {{illustrator.join(', ')}}</div>
+        {{/if}}
+
+        <div class="atlas-charts">
+            {{each charts chart}}
+            <div class="atlas-chart-row">
+                <div class="chart-dif">
+                    <span class="dif-badge dif-{{chart.level}}">{{chart.levelAbbr || chart.level}}</span>
+                    <span class="chart-dif-value">{{chart.difficulty.toFixed(1)}}</span>
+                </div>
+                <div class="chart-mid">
+                    <div class="chart-charter">Charter: {{chart.charter}}</div>
+                    <div class="chart-bpm-length">BPM: {{chart.bpm}}&ensp;|&ensp;{{chart.length || '--'}}</div>
+                    <div class="chart-notes">
+                        Tap: {{chart.tap}}&ensp; Hold: {{chart.hold}}&ensp; Drag: {{chart.drag}}&ensp; Ex: {{chart.ex}}
+                    </div>
+                </div>
+                <div class="chart-combo">
+                    <span class="combo-num">{{chart.combo}}</span>
+                    <span class="combo-label">notes</span>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+    </div>
+</div>
+
+<div class="createdbox">
+    <div class="mil-plugin">
+        <p>mil-plugin</p>
+    </div>
+    <div class="ver">
+        <p>{{version}}</p>
+    </div>
+</div>
+
+{{/block}}

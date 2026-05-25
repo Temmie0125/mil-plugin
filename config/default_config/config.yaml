@@ -1,0 +1,38 @@
+#  ************ 【渲染设置】 *************
+#  渲染精细度，可选值50~200，建议100
+renderScale: 100
+
+#  渲染质量 可选值1~100
+randerQuality: 100
+
+#  渲染超时时间 ms
+timeout: 20000
+
+#  等待渲染超时时间 ms
+waitingTimeout: 10000
+
+#  ************ 【系统设置】 *************
+
+#  b20最大成绩数量
+B20MaxNum: 50
+
+#  命令头（默认mil，即命令格式为 #mil song xxx）
+cmdhead: "mil"
+
+#  多个曲目回复序号等待时长(s)
+mutiNickWaitTimeOut: 30
+
+#  是否开启频道模式
+isGuild: false
+
+#  ************ 【曲绘资源】 *************
+
+#  曲绘仓库地址（Git 克隆地址）
+illDownloadUrl: "https://github.com/Temmie0125/mil-plugin-ill"
+
+#  GitHub 代理（留空或 false 则不使用）
+#  国内用户可设为 https://ghproxy.com/ 等加速站点
+githubProxy: false
+
+#  插件更新后是否自动更新曲绘（true/false）
+autoPullIll: false

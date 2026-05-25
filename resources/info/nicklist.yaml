@@ -1,0 +1,515 @@
+# mil-plugin 默认别名（phi 风格：曲名Key → 别名列表）
+# 用户自定义别名请在 config/nickconfig.yaml 中设置
+
+Aconsma:
+  - 幻听
+
+Agnostic:
+  - 不可知论者
+
+Aleph-0:
+  - "a0"
+  - "阿列夫0"
+  - "草先生的数学课堂"
+  - "数学课"
+  - "2016冠军"
+  - "BOF2016"
+
+Algebra:
+  - "代数"
+
+Autumn Rain:
+  - "AutumnRain"
+  - "秋雨"
+
+BUCHiAGE Fireworks:
+  - "BUCHiAGE烟花"
+  - "烟花"
+
+Before it Ends:
+  - "在它结束之前"
+  - "在结束之前"
+
+Bio-Engineering:
+  - "BioE"
+  - "生物工程"
+
+Brightened Demonios:
+  - "Brightened Demonios"
+  - "亮度恶魔"
+  - "亮化的恶魔"
+
+Broken Conviction:
+  - "Broken Conviction"
+  - "万念俱灰"
+  - "破碎的信念"
+
+Chartreuse Green:
+  - "ChartreuseGreen"
+  - "黄绿色"
+
+Class Memories:
+  - "ClassMemories"
+  - "课堂记忆"
+  - "交互课堂"
+
+Contrasty Angeles:
+  - "对比度天使"
+  - "CA"
+
+Curse of 14:
+  - "14的诅咒"
+  - "14"
+
+Deluge:
+  - "洪水"
+
+Dogbite:
+  - "狗咬"
+  - "狗"
+  
+
+Dum! Dum!! Dum!!!:
+  - "当当当"
+  - "DDD"
+
+Elsorhg:
+  - "Elsorhg"
+
+Ephemeric World:
+  - "泡沫世界"
+  - "短暂的世界"
+  - "EW"
+
+FULi AUTO SHOOTER:
+  - "自动射"
+  - "福利自动射"
+
+Fantasia Sonata Arcadia:
+  - "FSA"
+  - "乌托邦"
+  - "幻想奏鸣曲：阿卡迪亚"
+  - "阿卡迪亚"
+
+Fantasia Sonata Botanical Garden:
+  - "FSBG"
+  - "幻想奏鸣曲：植物园"
+  - "植物园"
+
+Fantasia Sonata God Dance:
+  - "FSGD"
+  - "与神共舞"
+  - "幻想奏鸣曲：神之舞"
+  - "神之舞"
+
+Fantasia Sonata Hope:
+  - "FSH"
+  - "幻想奏鸣曲：希望"
+  - "希望"
+
+Fantasia Sonata Reflection:
+  - "FSR"
+  - "幻想奏鸣曲：映照"
+  - "映照"
+  - "长条教学"
+  - "雨丝教学"
+
+Fantasia Sonata Sky Syndrome:
+  - "FSSS"
+  - "F鸟"
+  - "幻想奏鸣曲：天空综合征"
+  - "天空综合征"
+
+Fantasia Sonata Stars:
+  - "FSS"
+  - "幻想奏鸣曲：群星"
+  - "群星"
+
+Fantasia Sonata Surmount Vanity Aufleben:
+  - "FSSVA"
+  - "幻想奏鸣曲：破妄·重生"
+  - 重生
+
+Fluorescent Light:
+  - "Fluorescent Light"
+  - "荧光灯"
+
+Fly To Meteor (Milthm Edit):
+  - "Fly To Meteor"
+  - "FTM"
+  - 飞星
+  - 飞向流星
+  - 射星
+
+Fly To Meteor feat.兔柒 (Milthm Edit):
+  - "Fly To Meteor feat.TuQi"
+  - "Fly To Meteor feat.兔柒"
+  - "FTM兔"
+  - "FTMT"
+  - "FTM2"
+  - "飞星2"
+  - 射星2
+  - "兔七"
+
+Fragment of Memories:
+  - "FoM"
+  - "记忆碎片"
+
+Future Unbound (Game Edit):
+  - "Future Unbound"
+  - "无界未来"
+  - "解缚未来"
+
+Garden:
+  - "花园"
+
+GlassyHeart.:
+  - "GlassyHeart"
+  - "玻璃心"
+
+HYPER MEMORIES:
+  - "HYPERMEMORIES"
+  - "超记忆"
+  - "超量记忆"
+
+Habitable Zone:
+  - "HZ"
+  - 宜居带
+  - 适居带
+
+Hikari:
+  - 光
+  - 光光
+
+IN:
+  - "Insane"
+  - "里面"
+  - "疯狂"
+
+INFP.mp3:
+  - "INFP"
+
+Innocent white:
+  - "Innocent white"
+  - "影虎。"
+
+Jump out?:
+  - "Jump out?"
+  - "B.R.I"
+
+KAEDE:
+  - "KAEDE"
+  - "Ocelot"
+
+KASANE:
+  - "KASANE"
+  - "Kaede Hiyama"
+
+Kayava:
+  - "Kayava"
+  - "James Primate"
+
+LOUDER!:
+  - "LOUDER!"
+  - "K1N"
+
+LiFE Garden:
+  - "LiFEGarden"
+  - "生命花园"
+
+LiFE Garden (Extended Mix):
+  - "LiFEGarden(Extended Mix)"
+  - "生命花园加长版"
+
+Lost Civilization:
+  - "失落文明"
+  - "LC"
+  - 撬棍
+
+Lots Of Spices:
+  - "LOS"
+  - "香料满盈"
+
+Melody to Heaven:
+  - "天堂旋律"
+  - "通往天堂的旋律"
+
+Meltovt Necrosys:
+  - "Meltovt Necrosys"
+
+Moonflutter:
+  - "月之颤动"
+  - "月亮飘"
+
+Moving On:
+  - "Moving On"
+  - "Nastram"
+
+Myth compiler:
+  - "Myth compiler"
+
+Oiiaioooooiai:
+  - "Oiiaioooooiai"
+  - "黑瘦的鱼头"
+
+Oniichan:
+  - "Oniichan"
+  - "MoryueCi"
+
+OverRain:
+  - "OverRain"
+
+Polyridia:
+  - "Polyridia"
+
+Psyched Fevereiro:
+  - "Psyched Fevereiro"
+
+Pthahnil:
+  - "Pthahnil"
+  
+
+Rainbow Flavor!:
+  - "Rainbow Flavor!"
+  - "SuggestedCopy7 & 亚述"
+
+Regnaissance:
+  - "Regnaissance"
+  - "AiSS vs. Abit"
+
+Sakuyahime:
+  - "Sakuyahime"
+  - "MYTK"
+
+Sheer Ice Torrent:
+  - "Sheer Ice Torrent"
+  - "Connor \"12LBS\" Skidmore"
+
+Sound of Nature:
+  - "Sound of Nature"
+  - "初云CLoudie"
+
+Splash the Beat!!:
+  - "Splash the Beat!!"
+  - "ああああ"
+
+Sundown:
+  - "Sundown"
+  - "James Primate"
+
+Threat - Metropolis:
+  - "Threat - Metropolis"
+  - "Connor \"12LBS\" Skidmore"
+
+Threat - Sky Islands:
+  - "Threat - Sky Islands"
+  - "James Primate"
+
+Threat - Superstructure:
+  - "Threat - Superstructure"
+  - "James Primate"
+
+Threat - Waterfront Complex:
+  - "Threat - Waterfront Complex"
+  - "James Primate, Lydia Esrig, Connor \"12LBS\" Skidmore"
+
+Vestige of Dreams:
+  - "Vestige of Dreams"
+  - "DRIVE."
+
+Virtual S0da:
+  - "Virtual S0da"
+  - "Nerovix"
+
+WATER:
+  - "WATER"
+  - "A-39 & 沙包P"
+
+Welcome to Milthm:
+  - "Welcome to Milthm"
+  - "TsukiP"
+
+White Lizard:
+  - "White Lizard"
+  - "Lydia Esrig"
+
+Words:
+  - "Words"
+  - "X3ll3n"
+
+apOapSis(Edit):
+  - "apOapSis(Edit)"
+  - "Euphem1a."
+
+cafe in 6412I731V:
+  - "cafe in 6412I731V"
+  - "むさぬりゆ"
+
+conflict:
+  - "conflict"
+  - "siromaru + cranky"
+
+cybernetic blazar:
+  - "cybernetic blazar"
+  - "ああああ"
+
+furioso melodia:
+  - "furioso melodia"
+  - "gmtn. (witch's slave)"
+
+'slic.hertz #GdbG':
+  - "slic.hertz GdbG"
+
+☹:
+  - "Blueface"
+  - "哭脸"
+  - "苦瓜脸"
+
+いつか忘れるんだろう:
+  - "Someday, I will Forget"
+  - "总有一天我将忘记"
+  - "总有一天我会忘记"
+  - "忘却"
+
+はんてん:
+  - "Hanten"
+  - "反转"
+
+イコラト:
+  - "eclat"
+  - "辉光"
+  - "辉煌"
+
+サイクルの欠片:
+  - "Pieces of the Cycle"
+  - "循环残片"
+  - "循环的碎片"
+
+ニニ (feat. Qayo & mii):
+  - "Nini"
+  - "二二"
+  - "22"
+
+ネオン色のまち feat. Mai:
+  - "Neon Iro no Machi feat. Mai"
+  - "霓虹城"
+  - "霓虹色的街道"
+
+ホシフルヨルニ:
+  - "Hoshifuru Yoruni"
+  - "星光璀璨之夜"
+  - "星降之夜"
+  - "星降夜"
+
+九蓮寶燈:
+  - "Churenpoton"
+  - "九莲宝灯"
+  - "宝莲灯"
+
+仮想明日:
+  - "Imaginary Tomorrow"
+  - "假想明日"
+
+参宿四~Betelgeuse~:
+  - "Betelgeuse"
+  - "参宿四"
+
+命日:
+  - "Meinichi"
+  - "命日"
+  - "忌日"
+
+夜風:
+  - "Yokaze"
+  - "夜风"
+
+大月墜落狂想:
+  - "Moonfall"
+  - "大月"
+  - "大月坠落狂想"
+
+妹:
+  - "Imouto"
+  - "妹"
+
+时落之雨:
+  - "Episodic Rain"
+  - "时落之雨"
+
+暮予星光:
+  - "Reminiscence in Starlight"
+
+樱落繁花:
+  - "A Reincarnation of a Scattering Spring"
+
+灯ノ桜蝶:
+  - "Akashinosakuracho"
+  - "灯之樱蝶"
+  - "灯-AKASHI-"
+
+烁雨:
+  - "Sparkrain"
+
+烽閻鸞錵:
+  - "Houen Ranka"
+  - "烽阎"
+
+瑠璃色:
+  - "liulise"
+  - "瑠璃色"
+  - "琉璃色"
+  - "琉璃"
+
+白色の夢で。:
+  - "siroirono yumede"
+  - "白色梦"
+  - "白色的梦"
+  - "白日梦"
+
+白虎蓮華:
+  - "Tiger Lotus"
+  - "白虎莲华"
+  - "白虎莲花"
+  - "白虎"
+
+百九十:
+  - "190"
+  - "百九十八"
+
+粗线条的雨:
+  - "Thick Rain"
+  - "粗线雨"
+
+花月:
+  - "Kagetsu"
+
+逆飛雨:
+  - "nifeiyu"
+  - "逆飞雨"
+
+选择你的宽带:
+  - "Excellent broadband, which makes my internet speed spin"
+  - "宽带"
+
+運命:
+  - "Unmei"
+  - "世界の花"
+
+雨之城:
+  - "Castle in the Rain"
+  - "雨城"
+
+雨女:
+  - "Ameonna"
+
+靈:
+  - "Rei"
+  - "靈"
+  - "MYTK"
+  - "灵"
+
+驟雨の狭間:
+  - "Rainshower"
+  - "骤雨"
+  - "骤雨狭间"
+  - "骤雨的狭间"

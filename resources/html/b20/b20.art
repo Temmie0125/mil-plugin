@@ -1,0 +1,118 @@
+{{extend defaultLayout}}
+
+{{block 'css'}}
+<link rel="stylesheet" href="{{_res_path}}html/b20/b20.css">
+{{/block}}
+
+{{block 'main'}}
+
+<div class="title">
+    <div class="playerInfo">
+        <div class="blackBlock"></div>
+        <div class="avatar-box">
+            <div class="avatar">
+                <img src="{{_res_path}}avatar/{{avatar}}" alt="avatar">
+            </div>
+            {{if starLevel > 0}}
+            <img class="star-overlay" src="{{_res_path}}icon/reality{{starLevel}}.png" alt="star">
+            {{/if}}
+        </div>
+        <div class="playerId">
+            <p name="pvis">{{username}}</p>
+        </div>
+        <div class="rlt-box">
+            <p>{{reality.toFixed(4)}}</p>
+        </div>
+        <div class="date">
+            <p>{{updateTime}}</p>
+        </div>
+    </div>
+    <div class="recordInfo">
+        <div class="rlt-label">Reality</div>
+        <div class="total-label">Best {{overflowIndex}} / {{totalCount}} plays</div>
+    </div>
+</div>
+
+<div class="b20">
+    {{each scores song i}}
+
+    {{if i == overflowIndex}}
+    <div class="overflow-divider">
+        <div class="flow-line-box">
+            <div class="flow-line"></div><div class="flow-line"></div><div class="flow-line"></div>
+            <div class="flow-line"></div><div class="flow-line"></div><div class="flow-line"></div>
+        </div>
+        <p>OVER FLOW</p>
+        <div class="flow-line-box">
+            <div class="flow-line"></div><div class="flow-line"></div><div class="flow-line"></div>
+            <div class="flow-line"></div><div class="flow-line"></div><div class="flow-line"></div>
+        </div>
+    </div>
+    {{/if}}
+
+    {{if i % 2 == 0}}
+    <div class="b20-row">
+    {{/if}}
+
+    <div class="song {{i >= overflowIndex ? 'overflow-song' : ''}}">
+        <div class="ill-box">
+            <div class="num">
+                <p name="pvis">#{{i + 1}}</p>
+            </div>
+            <div class="ill">
+                {{if song.illustration}}
+                <img src="{{song.illustration}}" alt="ill">
+                {{/if}}
+            </div>
+            <div class="rank-dif rank-{{song.level}}">
+                <div class="dif-left">
+                    <p>{{song.levelAbbr}}</p>
+                </div>
+                <div class="dif-right">
+                    <p>{{song.difficulty.toFixed(1)}}</p>
+                </div>
+            </div>
+        </div>
+        <div class="info info-{{song.level}}">
+            <div class="songname">
+                <p name="pvis">{{song.song}}</p>
+            </div>
+            <div class="songinfo">
+                <div class="Rating">
+                    <img src="{{_res_path}}icon/{{song.gradeIcon}}.png" alt="{{song.grade}}">
+                </div>
+                <div class="chengji">
+                    <div class="score">
+                        <p>{{song.score}}</p>
+                    </div>
+                    <div class="line"></div>
+                    <div class="meta-row">
+                        <div class="acc">
+                            <p>{{(song.accuracy * 100).toFixed(2)}}%</p>
+                        </div>
+                        <div class="rlt">
+                            <p>{{song.reality.toFixed(2)}}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{if i % 2 == 1 || i == scores.length - 1}}
+    </div>
+    {{/if}}
+
+    {{/each}}
+</div>
+
+<div class="createdbox">
+    <div class="mil-plugin">
+        <p>mil-plugin</p>
+    </div>
+    <div class="ver">
+        <p>{{version}}</p>
+    </div>
+</div>
+
+{{/block}}

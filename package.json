@@ -1,0 +1,17 @@
+{
+  "name": "mil-plugin",
+  "version": "1.0.0",
+  "description": "Milthm游戏辅助插件",
+  "main": "index.js",
+  "type": "module",
+  "author": "mil-plugin",
+  "license": "ISC",
+  "dependencies": {
+    "art-template": "^4.13.2",
+    "chalk": "^5.6.2",
+    "chokidar": "^4.0.0",
+    "lodash": "^4.17.21",
+    "puppeteer": "^24.0.0",
+    "yaml": "^2.7.0"
+  }
+}

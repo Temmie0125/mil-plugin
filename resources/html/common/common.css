@@ -1,0 +1,480 @@
+@font-face {
+    font-family: 'Milthm';
+    src: url('../../fonts/ChillRoundF v3.0.ttf') format('truetype');
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Milthm', 'Noto Sans SC', sans-serif;
+    width: 1200px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    color: #fff;
+    position: relative;
+    overflow: visible;
+    transform-origin: top left;
+}
+
+.background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+}
+
+.background img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(80px) brightness(0.35);
+}
+
+/* Round corner clip box */
+.clip-box {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.rounded-box {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Player info bar */
+.player-bar {
+    display: flex;
+    align-items: center;
+    padding: 20px 40px;
+    margin: 24px 40px;
+    gap: 24px;
+    z-index: 1;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(15px);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.player-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.player-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.player-name {
+    font-size: 28px;
+    font-weight: bold;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.player-reality {
+    text-align: right;
+}
+
+.player-reality .rlt-value {
+    font-size: 36px;
+    font-weight: bold;
+    color: #4fc3f7;
+}
+
+.player-reality .rlt-label {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+/* Song card */
+.song-card {
+    display: flex;
+    align-items: center;
+    margin: 8px 40px;
+    padding: 12px 20px;
+    gap: 16px;
+    z-index: 1;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.2s;
+}
+
+.song-rank {
+    width: 48px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+    flex-shrink: 0;
+    color: #aaa;
+}
+
+.song-card:nth-child(-n+3) .song-rank { color: #ffd54f; }
+
+.song-ill {
+    width: 80px;
+    height: 56px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.song-ill img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.song-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.song-title {
+    font-size: 20px;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.song-meta {
+    font-size: 13px;
+    opacity: 0.65;
+    margin-top: 2px;
+}
+
+.song-difficulty {
+    flex-shrink: 0;
+    width: 70px;
+    text-align: center;
+}
+
+.dif-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.dif-Drizzle { background: rgba(76, 175, 80, 0.4); color: #81c784; }
+.dif-Sprinkle { background: rgba(33, 150, 243, 0.4); color: #64b5f6; }
+.dif-Cloudburst { background: rgba(244, 67, 54, 0.4); color: #ef5350; }
+.dif-Clear { background: rgba(156, 39, 176, 0.4); color: #ce93d8; }
+
+.song-score-box {
+    text-align: right;
+    flex-shrink: 0;
+    min-width: 120px;
+}
+
+.song-score {
+    font-size: 22px;
+    font-weight: bold;
+    color: #4fc3f7;
+}
+
+.song-acc {
+    font-size: 13px;
+    opacity: 0.7;
+}
+
+.song-grade {
+    flex-shrink: 0;
+    width: 70px;
+}
+
+.song-grade img {
+    height: 36px;
+    object-fit: contain;
+}
+
+/* Atlas (song catalog) styles */
+.atlas-container {
+    display: flex;
+    padding: 30px 40px;
+    gap: 30px;
+    z-index: 1;
+}
+
+.atlas-ill {
+    width: 380px;
+    height: 380px;
+    border-radius: 20px;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.atlas-ill img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.atlas-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.atlas-song-name {
+    font-size: 36px;
+    font-weight: bold;
+}
+
+.atlas-artist {
+    font-size: 18px;
+    opacity: 0.7;
+}
+
+.atlas-chapter {
+    font-size: 14px;
+    opacity: 0.5;
+}
+
+.atlas-charts {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.atlas-chart-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 14px 20px;
+    gap: 16px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+.chart-dif {
+    width: 170px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+
+.chart-dif-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #4fc3f7;
+}
+
+.chart-mid {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.chart-charter {
+    font-size: 15px;
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.chart-bpm-length {
+    font-size: 13px;
+    opacity: 0.65;
+}
+
+.chart-notes {
+    font-size: 13px;
+    opacity: 0.65;
+}
+
+.chart-combo {
+    text-align: right;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding-top: 2px;
+}
+
+.combo-num {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.combo-label {
+    font-size: 11px;
+    opacity: 0.5;
+}
+
+/* Score page */
+.score-container {
+    display: flex;
+    padding: 30px 40px;
+    gap: 30px;
+    z-index: 1;
+}
+
+.score-left {
+    width: 350px;
+    flex-shrink: 0;
+}
+
+.score-ill {
+    width: 100%;
+    height: 260px;
+    border-radius: 18px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.score-ill img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.score-player-info {
+    padding: 16px 20px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 14px;
+}
+
+.score-rlt {
+    font-size: 32px;
+    font-weight: bold;
+    color: #4fc3f7;
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.score-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.score-dif-card {
+    padding: 18px 24px;
+    background: rgba(0,0,0,0.35);
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.score-dif-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.score-dif-name {
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.score-dif-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #4fc3f7;
+}
+
+.score-dif-detail {
+    display: flex;
+    gap: 20px;
+    font-size: 14px;
+    opacity: 0.7;
+    flex-wrap: wrap;
+}
+
+.score-judge {
+    display: flex;
+    gap: 16px;
+    margin-top: 8px;
+    font-size: 14px;
+}
+
+.score-grade-badge {
+    position: absolute;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.score-grade-badge img {
+    height: 52px;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: bold;
+    opacity: 0.5;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+}
+
+/* Copyright */
+.copyright {
+    text-align: center;
+    padding: 30px;
+    opacity: 0.3;
+    font-size: 13px;
+    z-index: 1;
+}
+
+/* B20 header section */
+.b20-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+    margin: 10px 0;
+    z-index: 1;
+}
+
+.b20-title {
+    font-size: 22px;
+    font-weight: bold;
+    opacity: 0.6;
+}
+
+.b20-summary {
+    font-size: 14px;
+    opacity: 0.5;
+}
+
+/* Stars canvas */
+#stars {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}

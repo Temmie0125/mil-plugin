@@ -1,0 +1,104 @@
+{{extend defaultLayout}}
+
+{{block 'css'}}
+<link rel="stylesheet" href="{{_res_path}}html/score/score.css">
+{{/block}}
+
+{{block 'main'}}
+
+<div class="player-bar">
+    <div class="player-avatar">
+        <img src="{{_res_path}}avatar/{{avatar}}" alt="avatar">
+        {{if starLevel > 0}}
+        <img class="star-overlay" src="{{_res_path}}icon/reality{{starLevel}}.png" alt="star">
+        {{/if}}
+    </div>
+    <div class="player-name">
+        <p name="pvis">{{username}}</p>
+    </div>
+    <div class="player-reality">
+        <div class="rlt-value">{{reality.toFixed(4)}}</div>
+        <div class="rlt-label">Reality</div>
+    </div>
+</div>
+
+<div class="score-container">
+    <div class="score-left">
+        <div class="score-ill">
+            {{if illustration}}
+            <img src="{{illustration}}" alt="ill">
+            {{/if}}
+        </div>
+        <div class="score-player-info">
+            <div class="section-title">Song</div>
+            <div style="font-size:22px;font-weight:bold;margin-bottom:4px;" name="pvis">{{songName}}</div>
+            <div style="opacity:0.6;">by {{artist}}</div>
+            {{if chapter_zh}}
+            <div style="opacity:0.4;font-size:13px;">{{chapter_zh}}</div>
+            {{/if}}
+        </div>
+    </div>
+
+    <div class="score-right">
+        {{each scoreData data}}
+        <div class="score-dif-card" style="position:relative;">
+            {{if data.notPlayed}}
+            <div class="score-dif-header">
+                <div>
+                    <span class="dif-badge dif-{{data.level}}">{{data.levelAbbr || data.level}}</span>
+                    <span style="margin-left:8px;opacity:0.5;">{{data.difficulty.toFixed(1)}}</span>
+                </div>
+            </div>
+            <div style="text-align:center;opacity:0.35;padding:10px 0;font-size:18px;">NOT PLAYED</div>
+            {{else}}
+            <div class="score-dif-header">
+                <div>
+                    <span class="dif-badge dif-{{data.level}}">{{data.levelAbbr || data.level}}</span>
+                    <span style="margin-left:8px;opacity:0.5;">{{data.difficulty.toFixed(1)}}</span>
+                </div>
+                {{if data.gradeIcon}}
+                <div class="score-grade-badge">
+                    <img src="{{_res_path}}icon/{{data.gradeIcon}}.png" alt="{{data.grade}}">
+                </div>
+                {{/if}}
+            </div>
+            <div class="score-dif-value">{{data.score}}</div>
+            <div class="score-dif-detail">
+                <span>Acc: {{(data.accuracy * 100).toFixed(2)}}%</span>
+                <span>Reality: {{data.reality.toFixed(2)}}</span>
+                <span>Combo: {{data.combo}}</span>
+            </div>
+            {{if data.showJudges}}
+            <div class="score-judge">
+                <span>Exact: {{data.exact}}</span>
+                <span>Perfect: {{data.perfect}}</span>
+                <span>Good: {{data.good}}</span>
+                <span>Bad: {{data.bad}}</span>
+                <span>Miss: {{data.miss}}</span>
+            </div>
+            {{/if}}
+            {{if data.played_at}}
+            <div style="font-size:12px;opacity:0.4;margin-top:6px;">Played: {{data.played_at}}</div>
+            {{/if}}
+            {{/if}}
+        </div>
+        {{/each}}
+
+        {{if !scoreData || scoreData.length == 0}}
+        <div class="score-dif-card">
+            <div style="text-align:center;opacity:0.5;padding:30px;">暂无该曲目的成绩记录</div>
+        </div>
+        {{/if}}
+    </div>
+</div>
+
+<div class="createdbox">
+    <div class="mil-plugin">
+        <p>mil-plugin</p>
+    </div>
+    <div class="ver">
+        <p>{{version}}</p>
+    </div>
+</div>
+
+{{/block}}
