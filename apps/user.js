@@ -71,6 +71,215 @@ function getGradeForRecord(record, chartInfo) {
     )
 }
 
+/**
+ * 遍历全部存档成绩计算星星等级
+ * 只要存档中任意谱面AP过对应定数阈值即可获得星星
+ * @param {SaveManager} save
+ * @param {object} getInfo
+ * @returns {number}
+ */
+function computeStarLevel(save, getInfo) {
+    let starLevel = 0
+    for (let record of save.scores) {
+        let songKey = getInfo.chartIdToSongKey(record.chart_id)
+        if (!songKey) continue
+        let info = getInfo.info(songKey)
+        if (!info) continue
+
+        let difficulty = 0
+        for (let level of fCompute.Level) {
+            if (info.chart[level]?.chartid === record.chart_id) {
+                difficulty = info.chart[level].difficulty || 0
+                break
+            }
+        }
+
+        let isAP = record.score_accuracy >= 0.9999
+        // 对于 data.db，检查是否全Perfect/Exact
+        if (record._source !== 'saves' && !isAP) {
+            let songKey2 = getInfo.chartIdToSongKey(record.chart_id)
+            if (songKey2) {
+                let info2 = getInfo.info(songKey2)
+                if (info2) {
+                    let totalCombo = 1
+                    for (let level of fCompute.Level) {
+                        if (info2.chart[level]?.chartid === record.chart_id) {
+                            totalCombo = info2.chart[level].combo || 1
+                            break
+                        }
+                    }
+                    let perfectAndExact = (record.score_exact_count || 0) + (record.score_perfect_count || 0)
+                    isAP = perfectAndExact >= totalCombo
+                }
+            }
+        }
+        // BestLevel === 0 即 R 评（全Exact理论值）
+        let isR = record._bestLevel === 0
+
+        if (isAP || isR) {
+            if (difficulty >= 12.0) starLevel = Math.max(starLevel, 3)
+            else if (difficulty >= 9.0) starLevel = Math.max(starLevel, 2)
+            else if (difficulty >= 6.0) starLevel = Math.max(starLevel, 1)
+        }
+    }
+    return starLevel
+}
+
+/**
+ * 根据原始记录字段计算「质量排序值」（数字越小越好）
+ * 用于同一谱面新旧版本间选最优记录
+ * @param {object} record 原始成绩记录
+ * @param {number} combo 谱面总combo
+ * @returns {number}
+ */
+function getRecordQualityRank(record, combo) {
+    if (record._source === 'saves') {
+        // saves.db / 云存档 JSON：BestLevel 0=R, 1=M, 2=SS, 3=S, 4=A, 5=B, 6=C, 7=F
+        // AP 看 acc >= 0.9999；FC 看 AchievedStatus 含 4
+        let isR = record._bestLevel === 0
+        let isAP = !isR && record.score_accuracy >= 0.9999
+        let isFC = !isR && !isAP && Array.isArray(record._achievedStatus) && record._achievedStatus.includes(4)
+        if (isR) return 0
+        if (isAP) return 1
+        if (isFC) return 2
+        // 纯分数评级：BestLevel 越大越差（1~7 映射到 3~9）
+        return 3 + (record._bestLevel != null ? record._bestLevel : 7)
+    } else {
+        // data.db：从判定明细计算
+        let totalCombo = combo || 1
+        let exactCount = record.score_exact_count || 0
+        let perfectCount = record.score_perfect_count || 0
+        let perfectAndExact = exactCount + perfectCount
+        let badCount = record.score_bad_count || 0
+        let missCount = record.score_miss_count || 0
+        let actualCombo = totalCombo - badCount - missCount
+
+        let isAllExact = exactCount >= totalCombo
+        let isAllPerfectOrExact = perfectAndExact >= totalCombo
+        let isFC = (badCount === 0 && missCount === 0) || actualCombo >= totalCombo
+
+        if (isAllExact && record.score >= 1010000) return 0  // R
+        if (isAllPerfectOrExact && !isAllExact) return 1     // AP（非R）
+        if (isFC && !isAllPerfectOrExact) return 2           // FC（非AP）
+        // 纯分数评级
+        let scoreGrade = fCompute.getScoreGrade(record.score)
+        let gradeMap = { 'M': 3, 'SS': 4, 'S': 5, 'A': 6, 'B': 7, 'C': 8, 'F': 9 }
+        return gradeMap[scoreGrade] != null ? gradeMap[scoreGrade] : 9
+    }
+}
+
+/**
+ * 遍历全部存档成绩，按谱面去重后统计各难度 C/FC/AP 数量
+ * 同一谱面的新旧版本记录取评级最高的一条（基于原始数据字段判断）
+ *
+ * C/FC/AP 判定逻辑（直接读取原始字段，不依赖 grade 字符串）：
+ *   - saves.db / 云存档 JSON：
+ *     C  = BestLevel ≤ 6（非 F）
+ *     FC = BestLevel === 0(R) 或 AchievedStatus 包含 4
+ *     AP = BestLevel === 0(R) 或 score_accuracy ≥ 0.9999
+ *   - data.db（有判定明细）：
+ *     C  = score ≥ 600000
+ *     FC = combo 完整（无 Bad/Miss）
+ *     AP = 全部 Perfect 或 Exact（无 Good/Bad/Miss）
+ *
+ * @param {SaveManager} save
+ * @param {object} getInfo
+ * @returns {{ byDiff: object, stats: Array<{title: string, c: number, fc: number, ap: number}> }}
+ */
+function computeAllChartStats(save, getInfo) {
+    // 按 chart_id 分组
+    let chartGroups = {}
+    for (let record of save.scores) {
+        if (!chartGroups[record.chart_id]) chartGroups[record.chart_id] = []
+        chartGroups[record.chart_id].push(record)
+    }
+
+    let byDiff = {}
+    for (let level of fCompute.Level) {
+        byDiff[level] = { c: 0, fc: 0, ap: 0 }
+    }
+
+    for (let [chartId, records] of Object.entries(chartGroups)) {
+        let songKey = getInfo.chartIdToSongKey(chartId)
+        if (!songKey) continue
+        let info = getInfo.info(songKey)
+        if (!info) continue
+
+        let diffLevel = null
+        let totalCombo = 1
+        for (let level of fCompute.Level) {
+            if (info.chart[level]?.chartid === chartId) {
+                diffLevel = level
+                totalCombo = info.chart[level].combo || 1
+                break
+            }
+        }
+        if (!diffLevel) continue
+
+        // 取质量最优的记录（按原始字段排名）
+        let bestRecord = null
+        let bestRank = 999
+        for (let record of records) {
+            let rank = getRecordQualityRank(record, totalCombo)
+            if (rank < bestRank) {
+                bestRank = rank
+                bestRecord = record
+            }
+        }
+
+        if (!bestRecord) continue
+
+        // ----- 按原始字段判定 C / FC / AP -----
+        let isC, isFC, isAP
+
+        if (bestRecord._source === 'saves') {
+            // saves.db / 云存档 JSON
+            let bestLevel = bestRecord._bestLevel
+            isC = bestLevel == null || bestLevel <= 6  // 非 F(7)
+            isFC = bestLevel === 0  // R 也是 FC
+                || (Array.isArray(bestRecord._achievedStatus) && bestRecord._achievedStatus.includes(4))
+            isAP = bestLevel === 0  // R 也是 AP
+                || bestRecord.score_accuracy >= 0.9999
+        } else {
+            // data.db：从判定明细计算
+            let exactCount = bestRecord.score_exact_count || 0
+            let perfectCount = bestRecord.score_perfect_count || 0
+            let perfectAndExact = exactCount + perfectCount
+            let badCount = bestRecord.score_bad_count || 0
+            let missCount = bestRecord.score_miss_count || 0
+            let actualCombo = totalCombo - badCount - missCount
+
+            isC = bestRecord.score >= 600000
+            isFC = (badCount === 0 && missCount === 0) || actualCombo >= totalCombo
+            isAP = perfectAndExact >= totalCombo
+        }
+
+        // AP ⊂ FC ⊂ C：高等级向下兼容累加
+        if (isAP) {
+            byDiff[diffLevel].ap++
+            byDiff[diffLevel].fc++
+            byDiff[diffLevel].c++
+        } else if (isFC) {
+            byDiff[diffLevel].fc++
+            byDiff[diffLevel].c++
+        } else if (isC) {
+            byDiff[diffLevel].c++
+        }
+    }
+
+    let stats = []
+    for (let level of fCompute.Level) {
+        stats.push({
+            title: fCompute.LevelAbbr[level],
+            c: byDiff[level].c,
+            fc: byDiff[level].fc,
+            ap: byDiff[level].ap
+        })
+    }
+
+    return { byDiff, stats }
+}
+
 export class miluser extends milPluginBase {
     constructor() {
         super({
@@ -202,8 +411,13 @@ export class miluser extends milPluginBase {
         let { scores, reality } = save.getB20WithReality(fetchNum, getInfo)
         let player = save.getPlayerInfo()
 
-        // --- 计算星星和 Reality 版本 ---
-        let starLevel = 0
+        // --- 计算星星（遍历全部存档成绩） ---
+        let starLevel = computeStarLevel(save, getInfo)
+
+        // --- 计算全存档谱面统计 ---
+        let { stats } = computeAllChartStats(save, getInfo)
+
+        // --- 构建 B20 成绩列表 ---
         let allV3 = true
         let scoreData = []
         for (let i = 0; i < scores.length; i++) {
@@ -238,15 +452,6 @@ export class miluser extends milPluginBase {
             let gradeInfo = getGradeForRecord(record, { combo: totalCombo })
 
             let singleRlt = record._reality || calcReality(record.score, difficulty, parseGameVersion(record.game_version), record.score_accuracy)
-
-            // 星星判定：AP(acc=100%) 或 R(BestLevel=0 / 全Exact理论值) 且定数达到阈值（只看 Best 范围内）
-            let isAP = record.score_accuracy >= 0.9999
-            let isR = gradeInfo.grade === 'R'
-            if ((isAP || isR) && i < bestNum) {
-                if (difficulty >= 12.0) starLevel = Math.max(starLevel, 3)
-                else if (difficulty >= 9.0) starLevel = Math.max(starLevel, 2)
-                else if (difficulty >= 6.0) starLevel = Math.max(starLevel, 1)
-            }
 
             // Reality 版本判定（只看 Best 范围内的）
             if (i < bestNum) {
@@ -287,7 +492,7 @@ export class miluser extends milPluginBase {
             starLevel,
             scores: scoreData.slice(0, nnum),
             overflowIndex: bestNum,
-            totalCount: nnum,
+            stats,
             updateTime: fCompute.formatDate(new Date().toISOString()),
             background: bgIll,
             version: Version.ver
@@ -504,18 +709,8 @@ async function renderScore(save, songKey) {
         }
     }
 
-    // 计算星星等级（同 B20 逻辑：AP/R 所在难度定数决定）
-    let starLevel = 0
-    for (let item of scoreData) {
-        if (item.notPlayed) continue
-        let isAP = item.accuracy >= 0.9999
-        let isR = item.grade === 'R'
-        if (isAP || isR) {
-            if (item.difficulty >= 12.0) starLevel = Math.max(starLevel, 3)
-            else if (item.difficulty >= 9.0) starLevel = Math.max(starLevel, 2)
-            else if (item.difficulty >= 6.0) starLevel = Math.max(starLevel, 1)
-        }
-    }
+    // 计算星星等级（遍历全部存档成绩，而非仅当前曲目）
+    let starLevel = computeStarLevel(save, getInfo)
 
     return await picmodle.score({
         avatar: randomAvatar(),

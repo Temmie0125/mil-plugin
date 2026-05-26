@@ -88,13 +88,13 @@ export class milcloud extends milPluginBase {
             return true
         }
 
-        // 发送授权链接给用户，120 秒后自动撤回
-        send.send_with_At(e,
+        // 发送授权链接给用户，120 秒后自动撤回（授权成功时提前撤回）
+        let authMsg = await send.send_with_At(e,
             `Milthm 云存档授权\n` +
             `请点击下方链接完成授权：\n${deviceAuthInfo.verification_uri_complete}\n\n` +
             `或手动输入用户码: ${deviceAuthInfo.user_code}\n` +
             `授权码有效期: ${deviceAuthInfo.expires_in} 秒\n\n` +
-            `⚠️ 链接将在 120 秒后撤回，请尽快完成授权\n` +
+            `⚠️ 链接将在授权完成后撤回，请尽快完成授权\n` +
             `⚠️ 3 分钟内未完成授权将自动取消`,
             false,
             { recallMsg: 120 }
@@ -103,7 +103,7 @@ export class milcloud extends milPluginBase {
         // 开始轮询（3 分钟超时自动取消）
         bindingUsers.add(userId)
         try {
-            await this._pollLoop(e, auth, deviceAuthInfo, { timeoutSec: 180 })
+            await this._pollLoop(e, auth, deviceAuthInfo, { timeoutSec: 180, authMessage: authMsg })
         } finally {
             bindingUsers.delete(userId)
         }
@@ -118,7 +118,7 @@ export class milcloud extends milPluginBase {
      * @param {Object} deviceAuthInfo
      * @param {{timeoutSec?: number}} [options]
      */
-    async _pollLoop(e, auth, deviceAuthInfo, { timeoutSec } = {}) {
+    async _pollLoop(e, auth, deviceAuthInfo, { timeoutSec, authMessage } = {}) {
         let { device_code, interval, expires_in } = deviceAuthInfo
         let pollInterval = Math.max(interval, 3) * 1000 // 最低 3 秒
         // 取服务端过期和本地超时的较小值
@@ -140,6 +140,19 @@ export class milcloud extends milPluginBase {
             }
 
             if (result.success) {
+                // 立即撤回授权链接消息
+                if (authMessage?.message_id) {
+                    let msgId = Array.isArray(authMessage.message_id)
+                        ? authMessage.message_id[0]
+                        : authMessage.message_id
+                    try {
+                        if (e.isGroup && e.group?.recallMsg) {
+                            await e.group.recallMsg(msgId)
+                        } else if (e.friend?.recallMsg) {
+                            await e.friend.recallMsg(msgId)
+                        }
+                    } catch { /* 撤回失败不影响主流程 */ }
+                }
                 send.send_with_At(e,
                     `授权成功！\n` +
                     `现在可以使用 /${Config.getUserCfg('config', 'cmdhead')} update 更新云端存档~\n` +
@@ -215,7 +228,7 @@ export class milcloud extends milPluginBase {
         }
 
         updatingUsers.add(userId)
-        send.send_with_At(e, '⏳ 正在从云端获取存档信息...', true)
+        // send.send_with_At(e, '⏳ 正在从云端获取存档信息...', true)
 
         let cmdHead = Config.getUserCfg('config', 'cmdhead')
 
@@ -244,7 +257,7 @@ export class milcloud extends milPluginBase {
                 throw err
             }
 
-            send.send_with_At(e, '⏳ 正在下载存档文件...', true)
+            // send.send_with_At(e, '⏳ 正在下载存档文件...', true)
 
             // 3. 下载存档文件
             let fileBuffer = await auth.downloadSaveFile(saveData.fileUrl)

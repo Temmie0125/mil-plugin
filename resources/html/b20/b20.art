@@ -28,8 +28,48 @@
         </div>
     </div>
     <div class="recordInfo">
-        <div class="rlt-label">Reality</div>
-        <div class="total-label">Best {{overflowIndex}} / {{totalCount}} plays</div>
+        <div class="sheet">
+            <div class="row">
+                <div class="poz">
+                    <p>\</p>
+                </div>
+                {{each stats v i}}
+                <div class="poz">
+                    <p>{{v.title}}</p>
+                </div>
+                {{/each}}
+            </div>
+            <div class="row">
+                <div class="poz">
+                    <p>C</p>
+                </div>
+                {{each stats v i}}
+                <div class="poz">
+                    <p>{{v.c}}</p>
+                </div>
+                {{/each}}
+            </div>
+            <div class="row">
+                <div class="poz">
+                    <p>FC</p>
+                </div>
+                {{each stats v i}}
+                <div class="poz">
+                    <p>{{v.fc}}</p>
+                </div>
+                {{/each}}
+            </div>
+            <div class="row">
+                <div class="poz">
+                    <p>AP</p>
+                </div>
+                {{each stats v i}}
+                <div class="poz">
+                    <p>{{v.ap}}</p>
+                </div>
+                {{/each}}
+            </div>
+        </div>
     </div>
 </div>
 

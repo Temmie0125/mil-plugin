@@ -148,23 +148,81 @@ body p {
     background-color: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(5px);
     border-radius: 12px;
+    padding-left: 3%;
     height: 80px;
     display: flex;
-    flex-direction: column;
     align-items: center;
+}
+
+.whiteLine {
+    width: 4px;
+    background-color: rgba(255, 255, 255, 0.6);
+    position: absolute;
+    left: 0;
+    border-radius: 2px;
+    height: 80%;
+}
+
+.sheet {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
     justify-content: center;
-    gap: 4px;
 }
 
-.rlt-label {
-    font-size: 22px;
-    font-weight: bold;
-    color: #4fc3f7;
+.row {
+    position: relative;
+    height: 25%;
+    display: flex;
+    align-items: center;
 }
 
-.total-label {
+.row:nth-child(1) {
+    left: 0;
+}
+
+.row:nth-child(2) {
+    left: 0;
+}
+
+.row:nth-child(3) {
+    left: 0;
+}
+
+.row:nth-child(4) {
+    left: 0;
+}
+
+.poz {
+    width: 0;
+    height: 0;
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.poz:nth-child(2) {
+    left: 16%;
+}
+
+.poz:nth-child(3) {
+    left: 38%;
+}
+
+.poz:nth-child(4) {
+    left: 60%;
+}
+
+.poz:nth-child(5) {
+    left: 82%;
+}
+
+.poz p {
     font-size: 13px;
-    opacity: 0.6;
+    color: white;
+    white-space: nowrap;
 }
 
 /* B20 主区域 */
