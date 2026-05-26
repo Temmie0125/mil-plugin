@@ -1,0 +1,554 @@
+@import "../common/common.css";
+
+body {
+    flex-direction: column;
+    display: flex;
+    width: 800px;
+    height: fit-content;
+    font-family: 'Milthm', 'Noto Sans SC', sans-serif;
+    align-items: center;
+}
+
+.background img {
+    height: 100%;
+}
+
+body p {
+    color: white;
+    margin: 0px;
+    margin-block: 0;
+    margin-inline: 0;
+}
+
+/* ====== 顶部信息栏 ====== */
+
+.title .r, .svg-box {
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+}
+
+.title {
+    width: 100%;
+    margin-top: 5%;
+    height: 150px;
+    display: flex;
+    z-index: 1;
+    flex-direction: row;
+    margin-bottom: 5%;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.title .r {
+    height: 90%;
+    width: 38%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-left: 2%;
+}
+
+.title .r p {
+    font-size: unset;
+    line-height: 1.6;
+}
+
+/* ====== Reality 曲线 ====== */
+
+.rks_line {
+    width: 50%;
+    height: 90%;
+}
+
+.line {
+    width: 100%;
+    height: 86%;
+    filter: drop-shadow(0px 0px 2px white);
+}
+
+.line svg {
+    width: 100%;
+    height: 100%;
+    color: white;
+    stroke: currentColor;
+    stroke-width: 2.5px;
+    overflow: visible;
+    transform: scaleY(-1);
+}
+
+circle {
+    stroke: currentColor;
+    stroke-width: 0px;
+    fill: #ffffff;
+}
+
+.line line {
+    marker-start: url(#dot);
+}
+
+.line line:last-child {
+    marker-end: url(#dot)
+}
+
+.svg-box {
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.5);
+    width: calc(100% - 10px);
+    height: calc(100% - 10px);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.svg-box p {
+    margin-left: 5%;
+    font-size: 50px;
+    color: white;
+}
+
+.line-box {
+    display: flex;
+    flex-direction: column;
+    width: 84%;
+    height: 95%;
+    align-items: center;
+    padding-left: 2%;
+    padding-right: 2%;
+}
+
+.value_box {
+    height: 90%;
+    width: 8%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.value_box p {
+    font-size: 11px;
+}
+
+.date_box {
+    width: 100%;
+    height: 14%;
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    justify-content: space-between;
+    position: relative;
+}
+
+.date_box p {
+    font-size: 10px;
+    margin: 0;
+}
+
+/* ====== 成绩变化区域 ====== */
+
+.record_box {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.title_box {
+    display: flex;
+    z-index: 2;
+}
+
+.box_title {
+    height: 25px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin-top: 0;
+    position: relative;
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.box_title-right-down,
+.box_title-left {
+    background-color: #ff82e4;
+    border-radius: 5px;
+}
+
+.box_title-left {
+    width: 135px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.box_title-left p {
+    font-size: small;
+    color: rgb(255 255 255);
+}
+
+.box_title-right {
+    width: 100px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    z-index: 1;
+    position: absolute;
+    right: 0px;
+}
+
+.box_title-right p {
+    font-size: x-small;
+    color: rgb(255 255 255);
+}
+
+.box_title-right-down {
+    position: absolute;
+    bottom: 0px;
+    height: 5px;
+    width: 100%;
+    z-index: 0;
+}
+
+/* ====== 歌曲卡片 ====== */
+
+.song_box {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    padding-bottom: 1%;
+    padding-top: 1%;
+}
+
+.abox {
+    width: 135px;
+    height: auto;
+    display: flex;
+    filter: drop-shadow(0px 0px 5px black);
+    flex-direction: column;
+    align-items: flex-start;
+    position: relative;
+    margin-left: 10px;
+    margin-right: 10px;
+    z-index: 10;
+}
+
+.imgbox,
+.infobox {
+    overflow: hidden;
+    border-radius: 5px;
+}
+
+.imgbox {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2;
+}
+
+.imgbox img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 5;
+}
+
+.infobox {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    z-index: 2;
+}
+
+.coinbox {
+    height: 0;
+    width: 100%;
+    position: absolute;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+}
+
+.coinbox p {
+    font-size: small;
+    filter: drop-shadow(0px 0px 5px #000000aa);
+    color: #ffef00;
+}
+
+/* ====== 歌曲名称区域 ====== */
+
+.namebox {
+    background: linear-gradient(#000000aa 50%, #ffffff00);
+    backdrop-filter: blur(10px);
+    display: flex;
+    width: 100%;
+    height: 20%;
+    align-items: center;
+    position: relative;
+}
+
+.songsname {
+    width: 84%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    right: 0;
+}
+
+.songsname p {
+    font-size: 20px;
+    filter: drop-shadow(0px 0px 5px #000000aa);
+    text-align: center;
+}
+
+.new-box {
+    width: 16%;
+    height: 130%;
+    display: flex;
+    z-index: 1;
+    justify-content: center;
+    align-items: center;
+    filter: drop-shadow(0px 04px 5px black);
+}
+
+.new-box img {
+    height: 120%;
+}
+
+/* ====== 成绩信息区域 ====== */
+
+.songsinfo {
+    background: linear-gradient(#00000000, #000000aa 25%);
+    backdrop-filter: blur(10px);
+    width: 100%;
+    height: 40%;
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+}
+
+.songsinfo p {
+    font-size: xx-small;
+    line-height: 75%;
+    filter: drop-shadow(0px 0px 5px #000000aa);
+}
+
+.rank {
+    transform: skew(-13deg);
+    position: absolute;
+    left: 10;
+}
+
+.rank p {
+    font-size: xx-large;
+    color: rgb(255 255 255 / 49%);
+    margin-top: -5%;
+}
+
+.score {
+    position: absolute;
+    left: 1%;
+}
+
+.score p {
+    font-size: unset;
+}
+
+.acc {
+    position: absolute;
+    display: flex;
+    right: 0px;
+    bottom: 1px;
+    flex-direction: row;
+    align-items: flex-end;
+}
+
+.acc_1 p {
+    font-size: 15px;
+}
+
+.acc_2 p {
+    font-size: 10px;
+}
+
+.rks {
+    position: absolute;
+    right: 0;
+    bottom: 14px;
+}
+
+.rks p {
+    font-size: 11px;
+}
+
+/* ====== 无变化占位 ====== */
+
+.Nosignal {
+    width: 87%;
+    height: 150px;
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    background-color: rgb(112 112 112 / 45%);
+    margin-bottom: 5%;
+    writing-mode: horizontal-tb;
+}
+
+.border_corner {
+    z-index: 2500;
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0);
+    border: 6px solid #ffffff;
+}
+
+.border_corner_left_top {
+    top: 5px;
+    left: 5px;
+    border-right: none;
+    border-bottom: none;
+    border-top-left-radius: 4px;
+}
+
+.border_corner_right_top {
+    top: 5px;
+    right: 5px;
+    border-left: none;
+    border-bottom: none;
+    border-top-right-radius: 4px;
+}
+
+.border_corner_left_bottom {
+    bottom: 5px;
+    left: 5px;
+    border-right: none;
+    border-top: none;
+    border-bottom-left-radius: 4px;
+}
+
+.border_corner_right_bottom {
+    bottom: 5px;
+    right: 5px;
+    border-left: none;
+    border-top: none;
+    border-bottom-right-radius: 4px;
+}
+
+.Nosignal .border_corner,
+.Nosignal .line,
+.Nosignal .sqrt {
+    filter: drop-shadow(0 0 5px #fff);
+}
+
+.Nosignal .timeout,
+.Nosignal .client {
+    width: 90%;
+    margin-top: -0.5%;
+    margin-bottom: -0.5%;
+    z-index: 5;
+}
+
+.Nosignal .timeout p {
+    text-shadow:
+        0 0 1px #d8f9ffab,
+        1px 0 2px #d8f9ffab,
+        -1px 0 2px #d8f9ffab,
+        1px 0 5px #d8f9ffab,
+        -1px 0 10px #d8f9ffab;
+    margin-left: 5%;
+    font-size: xx-large;
+    color: white;
+}
+
+.Nosignal .client p {
+    text-shadow:
+        0 0 1px #8eeeff,
+        1px 0 2px #8eeeff,
+        -1px 0 2px #8eeeff,
+        1px 0 5px #8eeeff88,
+        -1px 0 10px #8eeeff88;
+    margin-left: 5%;
+    font-size: unset;
+    color: #00B0F0;
+}
+
+.Nosignal .line {
+    width: 20%;
+    height: 5px;
+    margin: 0;
+    border-bottom: 5px solid;
+    border-color: white;
+    margin-left: 5%;
+}
+
+.Nosignal .sqrt {
+    width: 89%;
+    height: 20%;
+    border: 3px solid;
+    border-color: white;
+    margin-left: 5%;
+    margin-top: 16;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: repeating-linear-gradient(-45deg, #ffffff, #ffffff 5px, rgb(255 255 255 / 0%) 0, rgb(255 255 255 / 0%) 10px);
+    filter: drop-shadow(0px 0px 3px #ffffff);
+}
+
+/* ====== 底部版本信息 ====== */
+
+.createdbox {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    margin-top: 5%;
+    margin-bottom: 5.5%;
+    writing-mode: horizontal-tb;
+    justify-content: center;
+}
+
+.createdbox p {
+    color: white;
+    font-size: 70px;
+}
+
+.mil-plugin {
+    display: flex;
+    z-index: 1;
+    justify-content: center;
+    align-items: center;
+}
+
+.ver {
+    display: flex;
+    z-index: 1;
+}
+
+.mil-plugin p {
+    font-size: xx-large;
+    text-shadow: 0 0 20px rgb(0 186 255);
+}
+
+.ver p {
+    font-size: large;
+    text-shadow: 0 0 20px #fff700;
+}

@@ -87,6 +87,19 @@ export default {
     },
 
     /**
+     * 渲染存档更新图片
+     * @param {object} data
+     * @returns {Promise<any>}
+     */
+    async update(data) {
+        return enqueue(async () => {
+            let buff = await puppeteer.screenshot('update/update', data)
+            if (!buff) return '图片生成失败QAQ'
+            return segment.image(buff)
+        })
+    },
+
+    /**
      * 渲染带水印的曲绘图片
      * 不受 renderScale 影响，图像大小由曲绘原始尺寸决定
      * @param {object} data - { illustration: string, illustrator: string }

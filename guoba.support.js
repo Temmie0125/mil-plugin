@@ -151,6 +151,18 @@ export function supportGuoba() {
                     component: 'SOFT_GROUP_BEGIN'
                 },
                 {
+                    field: 'maxUpdateEntries',
+                    label: '更新记录保留条数',
+                    bottomHelpMessage: '存档更新历史最多保留条数（10~99），超出自动删除最早记录',
+                    component: 'InputNumber',
+                    required: true,
+                    componentProps: {
+                        min: 10,
+                        max: 99,
+                        placeholder: '请输入保留条数（10~99）',
+                    },
+                },
+                {
                     field: 'client_id',
                     label: 'Client ID',
                     bottomHelpMessage: 'Milthm 云存档 OIDC 客户端 ID，留空则禁用云存档功能',

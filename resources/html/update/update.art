@@ -1,0 +1,154 @@
+{{extend defaultLayout}}
+
+{{block 'css'}}
+<link rel="stylesheet" href="{{_res_path}}html/update/update.css">
+{{/block}}
+
+{{block 'main'}}
+
+<div class="title">
+    <div class="r">
+        <p>Player: {{username}}</p>
+        <p>Reality: {{reality.toFixed(4)}}{{if realityDelta != 0}}
+            <span style="color: {{realityDelta > 0 ? 'gold' : 'red'}};">{{realityDelta >= 0 ? '+' : ''}}{{realityDelta.toFixed(4)}}</span>{{/if}}
+        </p>
+        {{if starStr}}
+        <p>Stars: {{starStr}}</p>
+        {{/if}}
+        <p>Date: {{date}}</p>
+    </div>
+    <div class="rks_line">
+        <div class="svg-box">
+            {{if rks_history.length > 0}}
+            <div class="value_box">
+                <p>{{rks_range[1].toFixed(4)}}</p>
+                <p>{{rks_range[0].toFixed(4)}}</p>
+            </div>
+            <div class="line-box">
+                <div class="line">
+                    <svg>
+                        <defs>
+                            <marker id="dot" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="2" refY="2">
+                                <circle cx="2" cy="2" r="1"></circle>
+                            </marker>
+                        </defs>
+                        {{each rks_history}}
+                        <line x1="{{$value[0]}}%" y1="{{$value[1]}}%" x2="{{$value[2]}}%" y2="{{$value[3]}}%">
+                        </line>
+                        {{/each}}
+                    </svg>
+                </div>
+                <div class="date_box">
+                    <p>{{rks_date[0]}}</p>
+                    <p>{{rks_date[1]}}</p>
+                </div>
+            </div>
+            {{else}}
+            <p>NO_INFO</p>
+            {{/if}}
+        </div>
+    </div>
+</div>
+
+{{if box_line[0]}}
+<div class="record_box">
+    {{each box_line time_line}}
+    <div class="title_box">
+        {{each time_line date}}
+        <div class="box_title" style="width: {{date.width}}px;filter: drop-shadow(0px 2px 2px {{date.color}});">
+            <div class="box_title-right-down" style="background-color: {{date.color}};"></div>
+            {{if date.date}}
+            <div class="box_title-left" style="background-color: {{date.color}};">
+                <p name="pvis">{{date.date}}</p>
+            </div>
+            {{/if}}
+            {{if date?.update_num > 1}}
+            <div class="box_title-right">
+                <p name="pvis">Updated x {{date.update_num}}</p>
+            </div>
+            {{/if}}
+        </div>
+        {{/each}}
+    </div>
+    <div class="song_box">
+        {{each time_line date}}
+        {{each date.song song}}
+        <div class="abox">
+            <div class="imgbox">
+                {{if song.illustration}}
+                <img src="{{song.illustration}}" alt="{{song.song}}">
+                {{/if}}
+            </div>
+            <div class="infobox">
+                <div class="namebox">
+                    {{if song.Rating}}
+                    <div class="new-box">
+                        <img src="{{_res_path}}icon/{{song.Rating}}.png" alt="{{song.Rating}}">
+                    </div>
+                    {{/if}}
+                    <div class="songsname">
+                        <p name="pvis">{{song.song}}</p>
+                    </div>
+                </div>
+                <div class="songsinfo">
+                    <div class="rank">
+                        <p>{{song.rank}}</p>
+                    </div>
+                    <div class="score">
+                        <p>{{song.score_new}}{{if song.beforeScore > 0}} <span style="color: gold; font-size: xx-small;">+{{song.score_new - song.beforeScore}}</span>{{/if}}</p>
+                    </div>
+                    <div class="acc">
+                        <div class="acc_1">
+                            <p>{{song.acc_new - song.acc_new % 1}}</p>
+                        </div>
+                        <div class="acc_2">
+                            <p>.{{((song.acc_new % 1).toFixed(4)).replace('0.','')}}%</p>
+                        </div>
+                    </div>
+                    {{if song.rks_new}}
+                    <div class="rks">
+                        <p>{{song.rks_new.toFixed(4)}}</p>
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+        {{/each}}
+        {{/each}}
+    </div>
+    {{/each}}
+</div>
+{{else}}
+<div class="Nosignal">
+    <div class="border_corner border_corner_left_top"></div>
+    <div class="border_corner border_corner_right_top"></div>
+    <div class="border_corner border_corner_left_bottom"></div>
+    <div class="border_corner border_corner_right_bottom"></div>
+    <div class="line"></div>
+    <div class="timeout">
+        <p>NO_CHANGE</p>
+    </div>
+    <div class="client">
+        <p>>>> Milthm Client Finding NewScore</p>
+    </div>
+    <div class="sqrt"></div>
+</div>
+{{/if}}
+
+<div class="createdbox">
+    <div class="mil-plugin">
+        <p>mil-plugin</p>
+    </div>
+    <div class="ver">
+        <p>{{version}}</p>
+    </div>
+</div>
+
+{{if theme == "star"}}
+<canvas id="stars"></canvas>
+<script>
+    themeStar();
+</script>
+{{/if}}
+
+{{/block}}

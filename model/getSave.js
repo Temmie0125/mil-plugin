@@ -1,9 +1,11 @@
 /**
  * 存档管理
- * 管理用户存档的获取、缓存
+ * 管理用户存档的获取、缓存、更新记录
  */
 import SaveManager from './SaveManager.js'
+import UpdateLog from './UpdateLog.js'
 import fs from 'fs'
+import fCompute from './fCompute.js'
 import logger from '../components/Logger.js'
 
 class GetSave {
@@ -32,34 +34,98 @@ class GetSave {
     }
 
     /**
-     * 导入用户存档
+     * 导入用户存档（本地文件）
+     * 每次导入都记录更新条目（首次导入取 top 6，后续记录 diff）
      * @param {string} userId
      * @param {string} filePath
-     * @returns {Promise<{success: boolean, msg: string, username?: string}>}
+     * @returns {Promise<{success: boolean, msg: string, username?: string, updateEntry?: object}>}
      */
     async importSave(userId, filePath) {
+        // 1. 导入前捕获旧成绩（首次导入为 null）
+        let oldScores = null
+        let oldSave = this.saves[userId]
+        if (oldSave && (oldSave.hasSave() || oldSave.scores.length > 0)) {
+            oldScores = oldSave.exportScores()
+        }
+
+        // 2. 创建新 SaveManager 并导入
         let save = new SaveManager(userId)
         let result = await save.importSave(filePath)
+
         if (result.success) {
             this.saves[userId] = save
+
+            // 3. 始终记录更新条目
+            let updateEntry = this._recordUpdate(userId, oldScores, save.scores, result.username || 'Unknown')
+            return { ...result, updateEntry }
         }
         return result
     }
 
     /**
      * 从 JSON 字符串导入云存档
+     * 每次导入都记录更新条目
      * @param {string} userId
      * @param {string} jsonStr - 云存档 JSON 字符串
-     * @returns {{success: boolean, msg: string, username?: string, saveType?: string}}
+     * @returns {{success: boolean, msg: string, username?: string, saveType?: string, updateEntry?: object}}
      */
     importFromJSON(userId, jsonStr) {
+        // 1. 导入前捕获旧成绩（首次导入为 null）
+        let oldScores = null
+        let oldSave = this.saves[userId]
+        if (oldSave && (oldSave.hasSave() || oldSave.scores.length > 0)) {
+            oldScores = oldSave.exportScores()
+        }
+
+        // 2. 创建新 SaveManager 并导入
         let save = new SaveManager(userId)
         let result = save.parseJSONSave(jsonStr)
+
         if (result.success) {
             this.saves[userId] = save
             save.saveCache()
+
+            // 3. 始终记录更新条目
+            let updateEntry = this._recordUpdate(userId, oldScores, save.scores, result.username || 'Unknown')
+            return { ...result, updateEntry }
         }
         return result
+    }
+
+    /**
+     * 执行 diff 并记录更新（每次导入/更新都必须调用）
+     * @param {string} userId
+     * @param {object[]|null} oldScores - null = 首次导入
+     * @param {object[]} newScores
+     * @param {string} username
+     * @returns {object} updateEntry（永远有效）
+     */
+    _recordUpdate(userId, oldScores, newScores, username) {
+        let updateLog = new UpdateLog(userId)
+        updateLog.load()
+
+        let dateStr = fCompute.formatDate(new Date().toISOString())
+        let entry = updateLog.createEntry(oldScores, newScores, username, dateStr)
+
+        updateLog.prepend(entry)
+
+        if (oldScores && oldScores.length > 0) {
+            logger.mark(`[mil-plugin] 用户 ${userId} 存档更新记录已保存，变动 ${entry.totalChanges} 首`)
+        } else {
+            logger.mark(`[mil-plugin] 用户 ${userId} 首次导入存档，记录 ${entry.totalChanges} 首最高成绩`)
+        }
+        return entry
+    }
+
+    /**
+     * 获取用户的更新日志
+     * @param {string} userId
+     * @returns {UpdateLog}
+     */
+    getUpdateLog(userId) {
+        let log = new UpdateLog(userId)
+        log.load()
+        return log
     }
 
     /**

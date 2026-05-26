@@ -6,6 +6,7 @@ import { calcReality, realityv2, realityv3, parseGameVersion } from '../model/re
 import { getFileInfo, getFileContent } from '../components/common.js'
 import getSave from '../model/getSave.js'
 import SaveManager from '../model/SaveManager.js'
+import UpdateLog from '../model/UpdateLog.js'
 import picmodle from '../model/picmodle.js'
 import milPluginBase from '../components/baseClass.js'
 import Version from '../components/Version.js'
@@ -366,7 +367,11 @@ export class miluser extends milPluginBase {
             let saveTypeHint = saveType === 'saves'
                 ? '\n'
                 : '\n提示：推荐使用 saves.db（而非 data.db）'
-            send.send_with_At(e, `${result.msg}\n用户名：${result.username}\n数据来源：${saveTypeName}\n共导入${getSave.saves[e.user_id]?.scores?.length || 0}条成绩记录${saveTypeHint}\n现在可以查询成绩了！`);
+            let baseMsg = `${result.msg}\n用户名：${result.username}\n数据来源：${saveTypeName}\n共导入${getSave.saves[e.user_id]?.scores?.length || 0}条成绩记录${saveTypeHint}\n现在可以查询成绩了！`
+
+            // 始终渲染 update 图片（首次导入展示 top 6，后续展示 diff）
+            let updateImg = await renderUpdateImage(e.user_id, result.updateEntry)
+            send.send_with_At(e, updateImg)
         } else {
             send.send_with_At(e, `${result.msg}`);
         }
@@ -805,4 +810,151 @@ function downloadFile(url, destPath) {
             reject(err)
         })
     })
+}
+
+/**
+ * 根据 Reality 历史数据构建 SVG 折线坐标和日期范围
+ * @param {Array<[string, number]>} history - [[dateStr, reality], ...]
+ * @returns {{ rks_history: number[][], rks_date: string[], rks_range: number[] }}
+ */
+function buildRksHistory(history) {
+    if (!history || history.length < 2) {
+        return { rks_history: [], rks_date: [], rks_range: [0, 0] }
+    }
+
+    let values = history.map(h => h[1])
+    let min = Math.min(...values)
+    let max = Math.max(...values)
+    let range = max - min || 0.1
+
+    let padding = range * 0.1
+    let yMin = Math.max(0, min - padding)
+    let yMax = max + padding
+    let yRange = yMax - yMin || 1
+
+    let segments = []
+    for (let i = 0; i < history.length - 1; i++) {
+        let x1 = (i / (history.length - 1)) * 100
+        let y1 = ((history[i][1] - yMin) / yRange) * 100
+        let x2 = ((i + 1) / (history.length - 1)) * 100
+        let y2 = ((history[i + 1][1] - yMin) / yRange) * 100
+        segments.push([x1, y1, x2, y2])
+    }
+
+    return {
+        rks_history: segments,
+        rks_date: [history[0][0], history[history.length - 1][0]],
+        rks_range: [yMin, yMax]
+    }
+}
+
+/**
+ * 渲染更新图片
+ * @param {string} userId
+ * @param {object} entry - updateEntry from diff
+ * @returns {Promise<any>}
+ */
+async function renderUpdateImage(userId, entry) {
+    let updateLog = getSave.getUpdateLog(userId)
+    let realityHistory = updateLog.getRealityHistory()
+    let curve = buildRksHistory(realityHistory)
+
+    // 构建星星字符串
+    let starStr = ''
+    for (let i = 0; i < (entry.starLevel || 0); i++) {
+        starStr += '★'
+    }
+
+    // 随机背景曲绘
+    let bgIll = getInfo.getill(getInfo.all_id[fCompute.randBetween(0, getInfo.all_id.length - 1)] || '')
+
+    // 为每条历史记录分配颜色（色轮循环）
+    const DATE_COLORS = [
+        '#ff82e4', '#82d5ff', '#82ffb4', '#ffe082', '#ff9e82', '#b482ff',
+        '#82ffed', '#ff82b4', '#b4ff82', '#82b4ff', '#e482ff', '#ffd582'
+    ]
+    let dateColorMap = new Map()
+    for (let h of updateLog.history) {
+        if ((h.changes || []).length === 0) continue
+        if (!dateColorMap.has(h.date)) {
+            dateColorMap.set(h.date, DATE_COLORS[dateColorMap.size % DATE_COLORS.length])
+        }
+    }
+
+    // 构建 box_line：打平全部卡片 → 5 张/行切分 → 同日期分组（允许跨行）
+    let allCards = []
+    for (let h of updateLog.history) {
+        let cards = (h.changes || []).slice(0, 6)
+        if (cards.length === 0) continue
+        let total = h.totalChanges || h._allChangesCount || 0
+        let color = dateColorMap.get(h.date) || '#ff82e4'
+        for (let card of cards) {
+            allCards.push({ card, date: h.date, total, color })
+        }
+    }
+
+    // 5 张一行切分
+    let rows = []
+    for (let i = 0; i < allCards.length; i += 5) {
+        rows.push(allCards.slice(i, i + 5))
+    }
+
+    // 每行按日期分组，重建 time_line（同日期跨行时 update_num 只在首行显示）
+    let box_line = []
+    let shownUpdateNum = new Set()
+
+    for (let row of rows) {
+        let time_line = []
+        let grouped = new Map()
+
+        for (let item of row) {
+            if (!grouped.has(item.date)) {
+                grouped.set(item.date, [])
+            }
+            grouped.get(item.date).push(item)
+        }
+
+        for (let [date, items] of grouped) {
+            let songs = items.map(item => ({
+                song: item.card.song,
+                illustration: item.card.illustration,
+                Rating: item.card.afterGrade,
+                rank: item.card.levelAbbr,
+                score_new: item.card.afterScore,
+                acc_new: (item.card.afterAccuracy || 0) * 100,
+                rks_new: item.card.afterReality || 0,
+                isNew: item.card.isNew || false,
+                beforeScore: item.card.beforeScore,
+                afterScore: item.card.afterScore
+            }))
+
+            let total = items[0].total
+            let firstRow = !shownUpdateNum.has(date)
+            shownUpdateNum.add(date)
+
+            time_line.push({
+                date,
+                color: items[0].color,
+                width: items.length * 155 - 20,
+                update_num: (firstRow && total > 6) ? total : 0,
+                song: songs
+            })
+        }
+        box_line.push(time_line)
+    }
+
+    let data = {
+        username: entry.username,
+        reality: entry.afterReality,
+        realityDelta: entry.realityDelta,
+        date: entry.date,
+        starStr,
+        starLevel: entry.starLevel,
+        box_line,
+        ...curve,
+        background: bgIll,
+        version: Version.ver
+    }
+
+    return await picmodle.update(data)
 }

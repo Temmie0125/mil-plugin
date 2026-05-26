@@ -513,6 +513,16 @@ export default class SaveManager {
     }
 
     /**
+     * 将当前成绩导出为纯数组（供 diff 比对用）
+     * @returns {object[]}
+     */
+    exportScores() {
+        this.ensureLoaded()
+        // 深拷贝一份，防止后续修改影响 diff
+        return JSON.parse(JSON.stringify(this.scores))
+    }
+
+    /**
      * 获取玩家信息
      * @returns {{username: string, user_id: string, totalScores: number, saveType: string}}
      */
