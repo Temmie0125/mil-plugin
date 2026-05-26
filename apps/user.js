@@ -188,11 +188,14 @@ export class miluser extends milPluginBase {
         let numMsg = msg.match(/^.*?(b|B)\s*([0-9]+)/i)?.[0]
         let nnum = numMsg ? Number(numMsg.replace(/^.*?(b|B)\s*/i, '')) : 20
         if (!nnum || nnum <= 0) nnum = 20
-        // 至少取 22 首，多余 2 首为 OVERFLOW
-        let fetchNum = Math.max(nnum + 2, 22)
-
+        
         let maxNum = Config.getUserCfg('config', 'B20MaxNum') || 50
-        fetchNum = Math.min(fetchNum, maxNum + 2)
+        nnum = Math.min(nnum, maxNum)
+
+        // Best 固定前 20 首，第 21 起为 OVERFLOW
+        let bestNum = 20
+        // 获取足够数量用于 Reality 计算（多取 2 首保证精度）
+        let fetchNum = Math.min(nnum + 2, maxNum + 2)
 
         // 获取成绩并计算Reality
         let { scores, reality } = save.getB20WithReality(fetchNum, getInfo)
@@ -235,17 +238,17 @@ export class miluser extends milPluginBase {
 
             let singleRlt = record._reality || calcReality(record.score, difficulty, parseGameVersion(record.game_version), record.score_accuracy)
 
-            // 星星判定：AP(acc=100%) 或 R(BestLevel=0 / 全Exact理论值) 且定数达到阈值
-            let isAP = record.score_accuracy >= 0.9999   // 准确率100%即为AP（适用data.db和saves.db）
-            let isR = gradeInfo.grade === 'R'             // R评（saves.db: BestLevel=0; data.db: 全Exact+1010000分）
-            if ((isAP || isR) && i < nnum) {
+            // 星星判定：AP(acc=100%) 或 R(BestLevel=0 / 全Exact理论值) 且定数达到阈值（只看 Best 范围内）
+            let isAP = record.score_accuracy >= 0.9999
+            let isR = gradeInfo.grade === 'R'
+            if ((isAP || isR) && i < bestNum) {
                 if (difficulty >= 12.0) starLevel = Math.max(starLevel, 3)
                 else if (difficulty >= 9.0) starLevel = Math.max(starLevel, 2)
                 else if (difficulty >= 6.0) starLevel = Math.max(starLevel, 1)
             }
 
-            // Reality 版本判定（只看 best N 范围内的）
-            if (i < nnum) {
+            // Reality 版本判定（只看 Best 范围内的）
+            if (i < bestNum) {
                 let gv = parseGameVersion(record.game_version)
                 if (gv < 4.0) allV3 = false
             }
@@ -268,7 +271,7 @@ export class miluser extends milPluginBase {
                 good: record.score_good_count || 0,
                 bad: record.score_bad_count || 0,
                 miss: record.score_miss_count || 0,
-                isOverflow: i >= nnum
+                isOverflow: i >= bestNum
             })
         }
 
@@ -281,9 +284,9 @@ export class miluser extends milPluginBase {
             reality,
             realityIcon: allV3 ? 'reality_v3' : 'reality',
             starLevel,
-            scores: scoreData,
-            overflowIndex: nnum,
-            totalCount: player.totalScores,
+            scores: scoreData.slice(0, nnum),
+            overflowIndex: bestNum,
+            totalCount: nnum,
             updateTime: fCompute.formatDate(new Date().toISOString()),
             background: bgIll,
             version: Version.ver
