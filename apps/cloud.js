@@ -375,11 +375,12 @@ function buildRksHistory(history) {
     let values = history.map(h => h[1])
     let min = Math.min(...values)
     let max = Math.max(...values)
-    let range = max - min || 0.1
-
-    let padding = range * 0.1
-    let yMin = Math.max(0, min - padding)
-    let yMax = max + padding
+    let yMin = min
+    let yMax = max
+    if (yMax - yMin < 0.0001) {
+        yMin -= 0.01
+        yMax += 0.01
+    }
     let yRange = yMax - yMin || 1
 
     let segments = []
@@ -491,13 +492,16 @@ async function renderUpdateImage(userId, entry) {
         box_line.push(time_line)
     }
 
+    // 标题栏数据从 history 中取（与曲线同源），避免 entry 参数不一致
+    let latestEntry = updateLog.history[0] || entry
+
     let data = {
-        username: entry.username,
-        reality: entry.afterReality,
-        realityDelta: entry.realityDelta,
-        date: entry.date,
+        username: latestEntry.username,
+        reality: latestEntry.afterReality,
+        realityDelta: latestEntry.realityDelta,
+        date: latestEntry.date,
         starStr,
-        starLevel: entry.starLevel,
+        starLevel: latestEntry.starLevel,
         box_line,
         ...curve,
         background: bgIll,

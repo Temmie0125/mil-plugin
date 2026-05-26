@@ -41,12 +41,8 @@ class GetSave {
      * @returns {Promise<{success: boolean, msg: string, username?: string, updateEntry?: object}>}
      */
     async importSave(userId, filePath) {
-        // 1. 导入前捕获旧成绩（首次导入为 null）
-        let oldScores = null
-        let oldSave = this.saves[userId]
-        if (oldSave && (oldSave.hasSave() || oldSave.scores.length > 0)) {
-            oldScores = oldSave.exportScores()
-        }
+        // 1. 导入前捕获旧成绩（内存没有则尝试从磁盘缓存恢复）
+        let oldScores = this._captureOldScores(userId)
 
         // 2. 创建新 SaveManager 并导入
         let save = new SaveManager(userId)
@@ -70,12 +66,8 @@ class GetSave {
      * @returns {{success: boolean, msg: string, username?: string, saveType?: string, updateEntry?: object}}
      */
     importFromJSON(userId, jsonStr) {
-        // 1. 导入前捕获旧成绩（首次导入为 null）
-        let oldScores = null
-        let oldSave = this.saves[userId]
-        if (oldSave && (oldSave.hasSave() || oldSave.scores.length > 0)) {
-            oldScores = oldSave.exportScores()
-        }
+        // 1. 导入前捕获旧成绩（内存没有则尝试从磁盘缓存恢复）
+        let oldScores = this._captureOldScores(userId)
 
         // 2. 创建新 SaveManager 并导入
         let save = new SaveManager(userId)
@@ -90,6 +82,27 @@ class GetSave {
             return { ...result, updateEntry }
         }
         return result
+    }
+
+    /**
+     * 捕获旧成绩：内存有则直接用，否则尝试从磁盘缓存恢复
+     * @param {string} userId
+     * @returns {object[]|null} null 表示真正的首次导入
+     */
+    _captureOldScores(userId) {
+        let oldSave = this.saves[userId]
+        if (!oldSave) {
+            // 重启后内存清空，尝试从磁盘缓存恢复
+            oldSave = new SaveManager(userId)
+            if (!oldSave.loadCache()) {
+                // 缓存也不存在 → 真正首次导入
+                return null
+            }
+        }
+        if (oldSave.scores && oldSave.scores.length > 0) {
+            return oldSave.exportScores()
+        }
+        return null
     }
 
     /**
