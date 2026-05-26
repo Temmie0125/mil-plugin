@@ -180,6 +180,7 @@ body {
 .dif-Sprinkle { background: rgba(33, 150, 243, 0.4); color: #64b5f6; }
 .dif-Cloudburst { background: rgba(244, 67, 54, 0.4); color: #ef5350; }
 .dif-Clear { background: rgba(156, 39, 176, 0.4); color: #ce93d8; }
+.dif-Special { background: rgba(255, 152, 0, 0.4); color: #ffb74d; }
 
 .song-score-box {
     text-align: right;

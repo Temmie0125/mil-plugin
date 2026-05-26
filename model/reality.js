@@ -50,7 +50,7 @@ function realityv2(score, c) {
  * 计算单曲 Reality
  * 规则：
  *   旧版 (gameVersion < 4.0)：分数 > 1005000 或 AP(acc=100%) → v3公式，否则 v2
- *   新版 (gameVersion >= 4.0)：分数 > 1005000 或 AP → v3公式，否则 v2+v3 混合取最大值
+ *   新版 (gameVersion >= 4.0)：统一使用 v3 公式
  * @param {number} score
  * @param {number} c - 定数
  * @param {number} [gameVersion=5.0] - 游戏版本号
@@ -62,11 +62,7 @@ function calcReality(score, c, gameVersion = 5.0, accuracy = 0) {
     let v3 = realityv3(score, c)
 
     if (gameVersion >= 4.0) {
-        // 新版：只有分数 <= 1005000 且非 AP 时才混合 v2+v3 取最大值
-        if (score <= 1005000 && !isAP) {
-            let v2 = realityv2(score, c)
-            return Math.max(v3, v2)
-        }
+        // 新版统一使用 v3 公式
         return v3
     }
 

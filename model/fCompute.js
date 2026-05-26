@@ -1,9 +1,9 @@
 /** Milthm 难度等级名称 */
-const Level = ['Drizzle', 'Sprinkle', 'Cloudburst', 'Clear']
+const Level = ['Drizzle', 'Sprinkle', 'Cloudburst', 'Clear', 'Special']
 /** 难度索引映射 */
-const LevelNum = { 'Drizzle': 0, 'Sprinkle': 1, 'Cloudburst': 2, 'Clear': 3 }
+const LevelNum = { 'Drizzle': 0, 'Sprinkle': 1, 'Cloudburst': 2, 'Clear': 3, 'Special': 4 }
 /** 难度缩写映射 */
-const LevelAbbr = { 'Drizzle': 'DZ', 'Sprinkle': 'SK', 'Cloudburst': 'CB', 'Clear': 'CL' }
+const LevelAbbr = { 'Drizzle': 'DZ', 'Sprinkle': 'SK', 'Cloudburst': 'CB', 'Clear': 'CL', 'Special': 'SP' }
 /** 最大定数 */
 const MAX_DIFFICULTY = 16.0
 

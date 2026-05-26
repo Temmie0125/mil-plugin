@@ -204,19 +204,23 @@ body p {
 }
 
 .poz:nth-child(2) {
-    left: 16%;
+    left: 12%;
 }
 
 .poz:nth-child(3) {
-    left: 38%;
+    left: 29%;
 }
 
 .poz:nth-child(4) {
-    left: 60%;
+    left: 46%;
 }
 
 .poz:nth-child(5) {
-    left: 82%;
+    left: 63%;
+}
+
+.poz:nth-child(6) {
+    left: 80%;
 }
 
 .poz p {
@@ -307,6 +311,7 @@ body p {
 .rank-Sprinkle { background-color: #42a5f5; }
 .rank-Cloudburst { background-color: #ef5350; }
 .rank-Clear { background-color: #ab47bc; }
+.rank-Special { background-color: #ff9800; }
 
 .dif-left, .dif-right {
     width: 50%;
@@ -343,6 +348,7 @@ body p {
 .info-Sprinkle { background-color: rgba(33,150,243,0.25); border-color: #42a5f5; }
 .info-Cloudburst { background-color: rgba(244,67,54,0.25); border-color: #ef5350; }
 .info-Clear { background-color: rgba(156,39,176,0.25); border-color: #ab47bc; }
+.info-Special { background-color: rgba(255,152,0,0.25); border-color: #ff9800; }
 
 .songname {
     width: 95%;

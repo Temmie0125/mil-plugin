@@ -2,7 +2,7 @@ import Config from '../components/Config.js'
 import send from '../model/send.js'
 import getInfo from '../model/getInfo.js'
 import fCompute from '../model/fCompute.js'
-import { calcReality, parseGameVersion } from '../model/reality.js'
+import { calcReality, realityv2, realityv3, parseGameVersion } from '../model/reality.js'
 import { getFileInfo, getFileContent } from '../components/common.js'
 import getSave from '../model/getSave.js'
 import SaveManager from '../model/SaveManager.js'
@@ -297,6 +297,10 @@ export class miluser extends milPluginBase {
                     fnc: 'b20'
                 },
                 {
+                    reg: `^[#/](${Config.getUserCfg('config', 'cmdhead')})(\\s*)(com|cal|计算)(\\s+).*$`,
+                    fnc: 'com'
+                },
+                {
                     reg: `^[#/](${Config.getUserCfg('config', 'cmdhead')})(\\s*)(score|单曲成绩|single).*$`,
                     fnc: 'singlescore'
                 },
@@ -499,6 +503,59 @@ export class miluser extends milPluginBase {
         }
 
         send.send_with_At(e, await picmodle.b20(data))
+        return true
+    }
+
+    /**
+     * 单曲Reality计算器
+     * 命令格式：/mil com <定数> <分数>
+     * 例：/mil com 12.5 1000000
+     */
+    async com(e) {
+        let msg = e.msg.replace(/[#/](.*?)(com|cal|计算)(\s*)/, '').trim()
+        // 提取两个数字：定数 和 分数
+        let parts = msg.split(/\s+/)
+        if (parts.length < 2) {
+            send.send_with_At(e, `格式有误！请使用：/${Config.getUserCfg('config', 'cmdhead')} com <定数> <分数>\n例：/${Config.getUserCfg('config', 'cmdhead')} com 12.5 1000000`)
+            return true
+        }
+
+        let difficulty = parseFloat(parts[0])
+        let score = parseInt(parts[1])
+
+        if (isNaN(difficulty) || isNaN(score)) {
+            send.send_with_At(e, `请输入有效的数字！\n定数如 12.5，分数如 1000000`)
+            return true
+        }
+
+        if (difficulty < 0 || difficulty > 16) {
+            send.send_with_At(e, `定数范围应为 0~16，你输入的是 ${difficulty}`)
+            return true
+        }
+        if (score < 0 || score > 1010000) {
+            send.send_with_At(e, `分数范围应为 0~1010000，你输入的是 ${score}`)
+            return true
+        }
+
+        let v2 = realityv2(score, difficulty)
+        let v3 = realityv3(score, difficulty)
+
+        // 实际采用的 Reality：旧版(<4.0)和新版(≥4.0)分别计算
+        let rltOld = calcReality(score, difficulty, 3.0)   // 旧版 (gameVersion < 4.0)
+        let rltNew = calcReality(score, difficulty, 5.0)   // 新版 (gameVersion >= 4.0)
+
+        let msg2 = `====== 单曲 Reality 计算 ======\n`
+        msg2 += `定数: ${difficulty.toFixed(1)}\n`
+        msg2 += `分数: ${score}\n\n`
+        msg2 += `------ 公式结果 ------\n`
+        msg2 += `V2 公式: ${v2.toFixed(4)}\n`
+        msg2 += `V3 公式: ${v3.toFixed(4)}\n\n`
+        msg2 += `------ 实际采用 ------\n`
+        msg2 += `旧版 (<4.0): ${rltOld.toFixed(4)}\n`
+        msg2 += `新版 (≥4.0): ${rltNew.toFixed(4)}\n`
+        msg2 += `\n注：旧版非AP且分数≤1005000时采用V2，否则V3；新版统一V3`
+
+        send.send_with_At(e, msg2)
         return true
     }
 
