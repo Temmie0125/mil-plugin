@@ -187,7 +187,8 @@ export class miluser extends milPluginBase {
         let msg = e.msg
         let numMsg = msg.match(/^.*?(b|B)\s*([0-9]+)/i)?.[0]
         let nnum = numMsg ? Number(numMsg.replace(/^.*?(b|B)\s*/i, '')) : 20
-        if (!nnum || nnum <= 0) nnum = 20
+        // 至少显示22个（满足2个OVERFLOW）
+        if (!nnum || nnum <= 22) nnum = 22
         
         let maxNum = Config.getUserCfg('config', 'B20MaxNum') || 50
         nnum = Math.min(nnum, maxNum)

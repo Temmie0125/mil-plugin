@@ -177,7 +177,7 @@ async function renderAtlas(id) {
         song: infoData.song,
         artist: infoData.artist || '',
         illustrator: infoData.illustrator || [],
-        chapter_zh: infoData.chapter_zh || '',
+        chapter_zh: infoData.chapter_zh || infoData.chapter || '',
         illustration: infoData.illustration || '',
         charts,
         version: Version.ver,
