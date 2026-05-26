@@ -133,13 +133,23 @@ data/
 #### 2.对接云存档
 
 > [!WARNING]
-> 云存档功能需要自行配置Cilent_id和Cilent_secret，可自行前往申请获取，此处不提供获取方式
+> 云存档功能需要自行配置以下任一内容：
+> - [Re Nya Profiler API](https://renya.mhtl.im/apikey)的API Key
+> - Milkloud的Cilent_id和Cilent_secret，可自行前往申请获取，此处不提供获取方式
+
 
 配置完上述内容之后，使用`/mil bind`，bot会发送一个授权链接，在有效期内完成授权即可。
 
 之后可以使用`/mil update`更新你的云存档。
 
-注意：Milthm游戏内不会自动同步云存档，打完歌需要手动上传存档。
+
+> [!WARNING]
+>
+> - Milthm游戏内不会自动同步云存档，打完歌需要手动上传存档。
+> - 如果你使用**Re Nya Profiler API**，请注意：
+>    - API有**并发限制**和**每日请求上限**，每个用户每天最多请求存档**5次**。本插件已经做了缓存机制，可自行按需配置缓存有效期，并合理控制请求频率。
+>    - API只能查询Best20以及Overflow2成绩，以及常规谱面完成的统计情况。如果你需要完整的数据，请使用本地导入或者自行申请Milkloud的OIDC client.
+
 
 ### 免责声明
 

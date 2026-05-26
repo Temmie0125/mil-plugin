@@ -1,8 +1,11 @@
 /**
  * Milthm 云存档命令
  * - /mil bind   : 授权 Milthm 云存档（Device Auth 流程，token 自动续期）
+ *                 或授权 Nya Profiler 查分器（当未配置 OIDC 时）
  * - /mil update : 从云端下载并导入最新存档
  * - /unbind     : 解除授权（不删除本地存档）
+ *
+ * 优先级：官方 OIDC (client_id) > Nya Profiler (nya_api_key)
  */
 import Config from '../components/Config.js'
 import send from '../model/send.js'
@@ -14,6 +17,8 @@ import Version from '../components/Version.js'
 import milPluginBase from '../components/baseClass.js'
 import logger from '../components/Logger.js'
 import MilthmCloudAuth from '../components/MilthmCloudAuth.js'
+import NyaProfilerAuth from '../components/NyaProfilerAuth.js'
+import SaveManager from '../model/SaveManager.js'
 import fs from 'node:fs'
 
 const Plugin_Path = `${process.cwd()}/plugins/mil-plugin`
@@ -50,17 +55,32 @@ export class milcloud extends milPluginBase {
 
     /**
      * 授权云存档 - Device Auth 流程（token 自动续期）
+     * 或授权 Nya Profiler（当未配置 OIDC 时）
      */
     async bind(e) {
         let userId = e.user_id
 
-        // 检查配置
+        // 检查配置优先级
         let clientId = this._getClientId()
-        let clientSecret = this._getClientSecret()
-        if (!clientId) {
-            send.send_with_At(e, '❌ 尚未配置 client_id，请联系 Bot 主人在 Guoba 面板中填写 Milthm 云存档的 client_id 和 client_secret')
+        let nyaApiKey = this._getNyaApiKey()
+
+        if (clientId) {
+            return await this._bindOIDC(e)
+        } else if (nyaApiKey) {
+            return await this._bindNya(e)
+        } else {
+            send.send_with_At(e, '❌ 尚未配置云存档接口！\n请联系 Bot 主人在 Guoba 面板中填写：\n• Milthm 云存档的 client_id 和 client_secret（推荐）\n• 或 Re Nya Profiler 的 API Key')
             return true
         }
+    }
+
+    /**
+     * 官方 OIDC 授权流程
+     */
+    async _bindOIDC(e) {
+        let userId = e.user_id
+        let clientId = this._getClientId()
+        let clientSecret = this._getClientSecret()
 
         // 检查是否已经在授权中
         if (bindingUsers.has(userId)) {
@@ -108,6 +128,90 @@ export class milcloud extends milPluginBase {
         bindingUsers.add(userId)
         try {
             await this._pollLoop(e, auth, deviceAuthInfo, { timeoutSec: 180, authMessage: authMsg })
+        } finally {
+            bindingUsers.delete(userId)
+        }
+
+        return true
+    }
+
+    /**
+     * Nya Profiler 授权流程
+     */
+    async _bindNya(e) {
+        let userId = e.user_id
+        let nyaApiKey = this._getNyaApiKey()
+
+        // 检查是否已经在授权中
+        if (bindingUsers.has(userId)) {
+            send.send_with_At(e, '⏳ 你已有一个授权流程在进行中，请先完成或等待超时~')
+            return true
+        }
+
+        let nyaAuth = new NyaProfilerAuth(userId, nyaApiKey)
+
+        // 检查是否已授权
+        if (nyaAuth.isBound()) {
+            send.send_with_At(e,
+                `✅ 你已授权 Re Nya Profiler 查分器\n` +
+                `当前绑定用户名: ${nyaAuth.getUsername()}\n` +
+                `如需更换账号，请先使用 /unbind 解除授权`
+            )
+            return true
+        }
+
+        // 生成授权链接
+        let authInfo
+        try {
+            authInfo = await nyaAuth.generateAuthUrl()
+        } catch (err) {
+            logger.error('[nya-profiler] 生成授权链接失败:', err)
+            send.send_with_At(e, `❌ 生成授权链接失败：${err.message}`)
+            return true
+        }
+
+        // 发送授权链接给用户
+        let authMsg = await send.send_with_At(e,
+            `Re Nya Profiler 查分器授权\n` +
+            `请点击下方链接完成授权：\n${authInfo.url}\n\n` +
+            `⚠️ 链接将在授权完成后撤回，请尽快完成授权\n` +
+            `⚠️ 2 分钟内未完成授权将自动取消`,
+            false,
+            { recallMsg: 120 }
+        )
+
+        // 开始轮询（2 分钟超时）
+        bindingUsers.add(userId)
+        try {
+            let username = await nyaAuth.pollAuthLoop(authInfo.uuid, 120, 3)
+
+            // 撤回授权链接消息
+            if (authMsg?.message_id) {
+                let msgId = Array.isArray(authMsg.message_id)
+                    ? authMsg.message_id[0]
+                    : authMsg.message_id
+                try {
+                    if (e.isGroup && e.group?.recallMsg) {
+                        await e.group.recallMsg(msgId)
+                    } else if (e.friend?.recallMsg) {
+                        await e.friend.recallMsg(msgId)
+                    }
+                } catch { /* 撤回失败不影响主流程 */ }
+            }
+
+            send.send_with_At(e,
+                `授权成功！\n` +
+                `Milthm 用户名: ${username}\n` +
+                `现在可以使用 /${Config.getUserCfg('config', 'cmdhead')} update 更新查分数据~`
+            )
+        } catch (err) {
+            if (err.message.includes('超时')) {
+                send.send_with_At(e, `⌛ 授权超时自动取消，请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
+            } else if (err.message.includes('拒绝')) {
+                send.send_with_At(e, '❌ 授权被拒绝，操作已取消')
+            } else {
+                send.send_with_At(e, `❌ 授权失败：${err.message}`)
+            }
         } finally {
             bindingUsers.delete(userId)
         }
@@ -208,6 +312,23 @@ export class milcloud extends milPluginBase {
      * 从云端更新存档
      */
     async updateSave(e) {
+        let clientId = this._getClientId()
+        let nyaApiKey = this._getNyaApiKey()
+
+        if (clientId) {
+            return await this._updateOIDC(e)
+        } else if (nyaApiKey) {
+            return await this._updateNya(e)
+        } else {
+            send.send_with_At(e, '❌ 尚未配置云存档接口！\n请联系 Bot 主人在 Guoba 面板中填写相关配置')
+            return true
+        }
+    }
+
+    /**
+     * 官方 OIDC 更新流程
+     */
+    async _updateOIDC(e) {
         let userId = e.user_id
 
         // 检查配置
@@ -232,7 +353,6 @@ export class milcloud extends milPluginBase {
         }
 
         updatingUsers.add(userId)
-        // send.send_with_At(e, '⏳ 正在从云端获取存档信息...', true)
 
         let cmdHead = Config.getUserCfg('config', 'cmdhead')
 
@@ -261,14 +381,10 @@ export class milcloud extends milPluginBase {
                 throw err
             }
 
-            // send.send_with_At(e, '⏳ 正在下载存档文件...', true)
-
             // 3. 下载存档文件
             let fileBuffer = await auth.downloadSaveFile(saveData.fileUrl)
 
             // 4. 检测文件格式并导入
-            // JSON 格式（云存档直接返回）：以 '{' 开头
-            // SQLite 格式：以 'SQLite format 3' 二进制头开头
             let isJSON = fileBuffer.length > 0 && fileBuffer[0] === 0x7B // '{'
             let result
 
@@ -289,19 +405,6 @@ export class milcloud extends milPluginBase {
             }
 
             if (result.success) {
-                let metaStr = ''
-                if (saveInfo.meta) {
-                    try {
-                        let meta = typeof saveInfo.meta === 'string'
-                            ? JSON.parse(saveInfo.meta)
-                            : saveInfo.meta
-                        metaStr = `\nReality: ${meta.reality_value || '?'}`
-                            + ` | AP: ${meta.ap_count || 0} FC: ${meta.fc_count || 0}`
-                            + ` | 更新时间: ${meta.date || '?'}`
-                    } catch { }
-                }
-
-                // 始终渲染 update 图片（首次导入展示 top 6，后续展示 diff）
                 let updateImg = await renderUpdateImage(userId, result.updateEntry)
                 send.send_with_At(e, updateImg)
             } else {
@@ -318,6 +421,130 @@ export class milcloud extends milPluginBase {
     }
 
     /**
+     * Nya Profiler 更新流程
+     */
+    async _updateNya(e) {
+        let userId = e.user_id
+
+        let nyaApiKey = this._getNyaApiKey()
+        if (!nyaApiKey) {
+            send.send_with_At(e, '❌ 尚未配置 Nya Profiler API Key')
+            return true
+        }
+
+        // 防重复
+        if (updatingUsers.has(userId)) {
+            send.send_with_At(e, '⏳ 你已有一个更新流程在进行中，请稍后~')
+            return true
+        }
+
+        let nyaAuth = new NyaProfilerAuth(userId, nyaApiKey)
+
+        if (!nyaAuth.isBound()) {
+            send.send_with_At(e, `❌ 你还没有授权 Re Nya Profiler！\n请先使用 /${Config.getUserCfg('config', 'cmdhead')} bind 进行授权`)
+            return true
+        }
+
+        let username = nyaAuth.getUsername()
+
+        // 0. 缓存有效期检查（以 userId 为 key，避免用户名冲突）
+        let ttlHours = this._getNyaCacheTTL()
+        let ttlSeconds = ttlHours * 3600
+        let cacheAge = NyaProfilerAuth.getCacheAge(userId)
+        let cacheBlocked = cacheAge !== null && cacheAge < ttlSeconds
+
+        updatingUsers.add(userId)
+
+        try {
+            let queryResult
+            let fromCache = false
+
+            if (cacheBlocked) {
+                // 缓存有效期内：使用缓存数据（不调用 API）
+                queryResult = NyaProfilerAuth.loadCache(userId)
+                fromCache = true
+                logger.info('[nya-profiler] TTL 保护：使用缓存数据, 缓存时间:', queryResult?.cachedAt)
+            } else {
+                // 非 TTL 保护期：始终调用 API 获取最新数据，便于 diff 比对
+                try {
+                    queryResult = await nyaAuth.queryUserData(username)
+                    NyaProfilerAuth.saveCache(userId, queryResult)
+                } catch (err) {
+                    if (err.message.includes('401') || err.message.includes('needAuth')) {
+                        nyaAuth.clearToken()
+                        send.send_with_At(e, `❌ 授权已过期，请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
+                        return true
+                    }
+                    // API 失败时尝试使用缓存兜底
+                    let cached = NyaProfilerAuth.loadCache(userId)
+                    if (cached) {
+                        logger.warn('[nya-profiler] API 调用失败，使用缓存数据兜底:', err.message)
+                        queryResult = cached
+                        fromCache = true
+                    } else {
+                        throw err
+                    }
+                }
+            }
+
+            if (!queryResult) {
+                send.send_with_At(e, '❌ 暂无数据，请先完成一次 API 查询')
+                return true
+            }
+
+            // 捕获旧成绩（必须在导入前，否则 importFromNyaProfiler 内的 saveCache 会覆盖）
+            let oldScores = getSave._captureOldScores(userId)
+
+            // 导入到 SaveManager 并合并
+            let save = new SaveManager(userId)
+            let importResult = save.importFromNyaProfiler(queryResult, getInfo)
+
+            if (!importResult.success) {
+                send.send_with_At(e, `❌ 数据导入失败：${importResult.msg}`)
+                return true
+            }
+
+            // 将 save 注册到 getSave 并记录更新
+            getSave.saves[userId] = save
+
+            let updateEntry = getSave._recordUpdate(
+                userId,
+                oldScores,
+                save.scores,
+                importResult.username
+            )
+
+            // 渲染更新图片
+            let updateImg = await renderUpdateImage(userId, updateEntry)
+
+            if (cacheBlocked) {
+                // TTL 保护提示 + 上次更新结果
+                let remainingSec = ttlSeconds - cacheAge
+                let remainingMin = Math.ceil(remainingSec / 60)
+                let ageMin = Math.floor(cacheAge / 60)
+                await send.send_with_At(e,
+                    `⏳ 数据已是最新（${ageMin} 分钟前更新）\n` +
+                    `缓存有效期 ${ttlHours} 小时，请 ${remainingMin} 分钟后重试以获取最新数据\n` +
+                    `（Nya Profiler 每日仅 5 次下载机会）\n` +
+                    `以下为上次更新结果：`,
+                    true
+                )
+                send.send_with_At(e, updateImg)
+            } else {
+                send.send_with_At(e, updateImg)
+            }
+
+        } catch (err) {
+            logger.error('[nya-profiler] 更新失败:', err)
+            send.send_with_At(e, `❌ 查分数据更新失败：${err.message}`)
+        } finally {
+            updatingUsers.delete(userId)
+        }
+
+        return true
+    }
+
+    /**
      * 解除授权 - 清空 token（不删除本地存档）
      */
     async unbind(e) {
@@ -325,21 +552,42 @@ export class milcloud extends milPluginBase {
 
         let clientId = this._getClientId()
         let clientSecret = this._getClientSecret()
+        let nyaApiKey = this._getNyaApiKey()
 
-        let auth = new MilthmCloudAuth(userId, clientId, clientSecret)
+        let didUnbind = false
 
-        if (!auth.isBound()) {
-            send.send_with_At(e, '你还没有授权 Milthm 云存档哦~')
+        // 清除 OIDC 授权
+        if (clientId) {
+            let auth = new MilthmCloudAuth(userId, clientId, clientSecret)
+            if (auth.isBound()) {
+                auth.clearTokens()
+                didUnbind = true
+            }
+        }
+
+        // 清除 Nya Profiler 授权
+        if (nyaApiKey) {
+            let nyaAuth = new NyaProfilerAuth(userId, nyaApiKey)
+            if (nyaAuth.isBound()) {
+                // 先获取用户名再清除
+                let username = nyaAuth.getUsername()
+                nyaAuth.clearToken()
+                // 同时清除缓存（以 userId 为 key）
+                if (username) {
+                    NyaProfilerAuth.clearCache(userId)
+                }
+                didUnbind = true
+            }
+        }
+
+        if (!didUnbind) {
+            send.send_with_At(e, '你还没有授权云存档哦~')
             return true
         }
 
-        // 清除 token
-        auth.clearTokens()
-        // 本地存档由 /delete 命令管理，解绑不删除
-
         send.send_with_At(e,
             `已解除授权\n` +
-            `Milthm 云存档授权数据已清除\n` +
+            `云存档授权数据已清除\n` +
             `本地存档数据保留，可用 /${Config.getUserCfg('config', 'cmdhead')} delete 删除\n\n` +
             `如需重新使用云存档，请发送 /${Config.getUserCfg('config', 'cmdhead')} bind 重新授权`
         )
@@ -355,6 +603,17 @@ export class milcloud extends milPluginBase {
 
     _getClientSecret() {
         return String(Config.getUserCfg('config', 'client_secret') || '').trim()
+    }
+
+    _getNyaApiKey() {
+        return String(Config.getUserCfg('config', 'nya_api_key') || '').trim()
+    }
+
+    _getNyaCacheTTL() {
+        let val = parseInt(String(Config.getUserCfg('config', 'nyaCacheTTL') || '2'))
+        if (isNaN(val) || val < 1) val = 1
+        if (val > 24) val = 24
+        return val
     }
 
     _sleep(ms) {

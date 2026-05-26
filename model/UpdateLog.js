@@ -160,35 +160,56 @@ export default class UpdateLog {
 
         // 计算每条记录的 Reality 并按降序排序，取前 6
         let scored = newScores.map(s => {
-            let songKey = getInfo.chartIdToSongKey(s.chart_id)
-            let difficulty = 0
-            if (songKey) {
-                let info = getInfo.info(songKey)
-                if (info) {
-                    for (let level of fCompute.Level) {
-                        if (info.chart[level]?.chartid === s.chart_id) {
-                            difficulty = info.chart[level].difficulty || 0
-                            break
+            let rlt, difficulty
+            // Nya Profiler：直接使用 API 预计算值（info.json 定数可能不同）
+            if (s._nyaSingleRating != null) {
+                rlt = s._nyaSingleRating
+                difficulty = s._nyaDifficulty || 0
+            } else {
+                difficulty = 0
+                let songKey = getInfo.chartIdToSongKey(s.chart_id)
+                if (songKey) {
+                    let info = getInfo.info(songKey)
+                    if (info) {
+                        for (let level of fCompute.Level) {
+                            if (info.chart[level]?.chartid === s.chart_id) {
+                                difficulty = info.chart[level].difficulty || 0
+                                break
+                            }
                         }
                     }
                 }
+                let gameVer = parseGameVersion(s.game_version)
+                rlt = calcReality(s.score, difficulty, gameVer, s.score_accuracy)
             }
-            let gameVer = parseGameVersion(s.game_version)
-            let rlt = calcReality(s.score, difficulty, gameVer, s.score_accuracy)
             return { ...s, _rlt: rlt, _diff: difficulty }
         })
 
         // 按 Reality 降序
         scored.sort((a, b) => b._rlt - a._rlt || b.score - a.score)
 
-        // 取前 6，构建 diff 信息（before 都为 0）
-        let displayList = scored.slice(0, 6)
+        // 按 chart_id 去重取前 6（避免同谱面 V2/V3 重复展示）
+        let seenCharts = new Set()
+        let displayList = []
+        for (let s of scored) {
+            if (seenCharts.has(s.chart_id)) continue
+            seenCharts.add(s.chart_id)
+            displayList.push(s)
+            if (displayList.length >= 6) break
+        }
+
         let changes = displayList.map(s => this._buildSongDiff(s, null, s._diff))
+
+        // 兜底：如果 changes 为空但有数据，用第 1 条强制构建
+        if (changes.length === 0 && scored.length > 0) {
+            let fallback = this._buildSongDiff(scored[0], null, scored[0]._diff)
+            changes = [fallback]
+        }
 
         return {
             date: dateStr,
             username,
-            beforeReality: reality,   // 首条：前后相同 = 水平线
+            beforeReality: reality,
             afterReality: reality,
             realityDelta: 0,
             starLevel,
@@ -274,17 +295,24 @@ export default class UpdateLog {
      */
     _buildSongDiff(newRec, oldRec, knownDifficulty) {
         let songKey = getInfo.chartIdToSongKey(newRec.chart_id)
-        let songName = newRec.chart_id
+        let songName = newRec._nyaSongName || newRec.chart_id
         let illustration = ''
         let diffLevel = 'Drizzle'
         let difficulty = knownDifficulty || 0
 
+        // 根据 Nya category 代码推算难度名称
+        let c2l = { 'DZ': 'Drizzle', 'SK': 'Sprinkle', 'CB': 'Cloudburst', 'CL': 'Clear', 'SP': 'Special' }
+        if (newRec._nyaCategory && c2l[newRec._nyaCategory]) {
+            diffLevel = c2l[newRec._nyaCategory]
+            if (!knownDifficulty) difficulty = newRec._nyaDifficulty || 0
+        }
+
         if (songKey) {
             let info = getInfo.info(songKey)
             if (info) {
-                songName = info.song || songKey
+                if (!newRec._nyaSongName) songName = info.song || songKey
                 illustration = info.illustration || ''
-                if (!knownDifficulty) {
+                if (!knownDifficulty && diffLevel === 'Drizzle') {
                     for (let level of fCompute.Level) {
                         if (info.chart[level]?.chartid === newRec.chart_id) {
                             diffLevel = level
@@ -292,7 +320,7 @@ export default class UpdateLog {
                             break
                         }
                     }
-                } else {
+                } else if (diffLevel === 'Drizzle') {
                     // difficulty 已有，但还需要 level 名
                     for (let level of fCompute.Level) {
                         if (info.chart[level]?.chartid === newRec.chart_id) {
@@ -304,14 +332,21 @@ export default class UpdateLog {
             }
         }
 
-        let gameVer = parseGameVersion(newRec.game_version)
-        let newRlt = calcReality(newRec.score, difficulty, gameVer, newRec.score_accuracy)
+        // Reality：Nya Profiler 使用预计算值，其余走公式
+        let newRlt, oldRlt
+        if (newRec._nyaSingleRating != null) {
+            newRlt = newRec._nyaSingleRating
+            oldRlt = oldRec ? (oldRec._nyaSingleRating || 0) : 0
+        } else {
+            let gameVer = parseGameVersion(newRec.game_version)
+            newRlt = calcReality(newRec.score, difficulty, gameVer, newRec.score_accuracy)
+            oldRlt = oldRec
+                ? calcReality(oldRec.score, difficulty, parseGameVersion(oldRec.game_version), oldRec.score_accuracy)
+                : 0
+        }
 
         let oldScore = oldRec ? oldRec.score : 0
         let oldAcc = oldRec ? (oldRec.score_accuracy || 0) : 0
-        let oldRlt = oldRec
-            ? calcReality(oldRec.score, difficulty, parseGameVersion(oldRec.game_version), oldRec.score_accuracy)
-            : 0
 
         let gradeInfo = this._getGradeForRecord(newRec)
         let oldGradeInfo = oldRec ? this._getGradeForRecord(oldRec) : null
@@ -342,7 +377,7 @@ export default class UpdateLog {
      * @returns {{grade: string, iconName: string}}
      */
     _getGradeForRecord(record) {
-        if (record._source === 'saves') {
+        if (record._source === 'saves' || record._source === 'nya_profiler') {
             let scoreGrade = (record._bestLevel != null && BEST_LEVEL_GRADE[record._bestLevel])
                 || fCompute.getScoreGrade(record.score)
             let isAP = record.score_accuracy >= 0.9999
@@ -376,22 +411,29 @@ export default class UpdateLog {
 
         let perChart = {}
         for (let s of scores) {
-            let songKey = getInfo.chartIdToSongKey(s.chart_id)
-            if (!songKey) continue
-            let info = getInfo.info(songKey)
-            if (!info) continue
+            let rlt
 
-            let difficulty = 0
-            for (let level of fCompute.Level) {
-                if (info.chart[level]?.chartid === s.chart_id) {
-                    difficulty = info.chart[level].difficulty || 0
-                    break
+            // Nya Profiler：直接用 API 预计算值
+            if (s._nyaSingleRating != null) {
+                rlt = s._nyaSingleRating
+            } else {
+                let songKey = getInfo.chartIdToSongKey(s.chart_id)
+                if (!songKey) continue
+                let info = getInfo.info(songKey)
+                if (!info) continue
+
+                let difficulty = 0
+                for (let level of fCompute.Level) {
+                    if (info.chart[level]?.chartid === s.chart_id) {
+                        difficulty = info.chart[level].difficulty || 0
+                        break
+                    }
                 }
-            }
-            if (difficulty <= 0) continue
+                if (difficulty <= 0) continue
 
-            let gameVer = parseGameVersion(s.game_version)
-            let rlt = calcReality(s.score, difficulty, gameVer, s.score_accuracy)
+                let gameVer = parseGameVersion(s.game_version)
+                rlt = calcReality(s.score, difficulty, gameVer, s.score_accuracy)
+            }
 
             if (!perChart[s.chart_id] || rlt > perChart[s.chart_id]) {
                 perChart[s.chart_id] = rlt

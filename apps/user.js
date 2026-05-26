@@ -39,8 +39,8 @@ const BEST_LEVEL_GRADE = ['R', 'M', 'SS', 'S', 'A', 'B', 'C', 'F']
  * @returns {{grade: string, iconName: string}}
  */
 function getGradeForRecord(record, chartInfo) {
-    if (record._source === 'saves') {
-        // saves.db: BestLevel 定分数评级，acc=100% 判定 AP，AchievedStatus 含 4 判定 FC
+    if (record._source === 'saves' || record._source === 'nya_profiler') {
+        // saves.db / nya_profiler: BestLevel 定分数评级，acc=100% 判定 AP，AchievedStatus 含 4 判定 FC
         let scoreGrade = (record._bestLevel != null && BEST_LEVEL_GRADE[record._bestLevel]) || fCompute.getScoreGrade(record.score)
         let isAP = record.score_accuracy >= 0.9999
         let isFC = Array.isArray(record._achievedStatus) && record._achievedStatus.includes(4)
@@ -97,7 +97,7 @@ function computeStarLevel(save, getInfo) {
 
         let isAP = record.score_accuracy >= 0.9999
         // 对于 data.db，检查是否全Perfect/Exact
-        if (record._source !== 'saves' && !isAP) {
+        if (record._source !== 'saves' && record._source !== 'nya_profiler' && !isAP) {
             let songKey2 = getInfo.chartIdToSongKey(record.chart_id)
             if (songKey2) {
                 let info2 = getInfo.info(songKey2)
@@ -134,8 +134,8 @@ function computeStarLevel(save, getInfo) {
  * @returns {number}
  */
 function getRecordQualityRank(record, combo) {
-    if (record._source === 'saves') {
-        // saves.db / 云存档 JSON：BestLevel 0=R, 1=M, 2=SS, 3=S, 4=A, 5=B, 6=C, 7=F
+    if (record._source === 'saves' || record._source === 'nya_profiler') {
+        // saves.db / nya_profiler / 云存档 JSON：BestLevel 0=R, 1=M, 2=SS, 3=S, 4=A, 5=B, 6=C, 7=F
         // AP 看 acc >= 0.9999；FC 看 AchievedStatus 含 4
         let isR = record._bestLevel === 0
         let isAP = !isR && record.score_accuracy >= 0.9999
@@ -233,8 +233,8 @@ function computeAllChartStats(save, getInfo) {
         // ----- 按原始字段判定 C / FC / AP -----
         let isC, isFC, isAP
 
-        if (bestRecord._source === 'saves') {
-            // saves.db / 云存档 JSON
+        if (bestRecord._source === 'saves' || bestRecord._source === 'nya_profiler') {
+            // saves.db / nya_profiler / 云存档 JSON
             let bestLevel = bestRecord._bestLevel
             isC = bestLevel == null || bestLevel <= 6  // 非 F(7)
             isFC = bestLevel === 0  // R 也是 FC
@@ -420,11 +420,32 @@ export class miluser extends milPluginBase {
         let { scores, reality } = save.getB20WithReality(fetchNum, getInfo)
         let player = save.getPlayerInfo()
 
-        // --- 计算星星（遍历全部存档成绩） ---
-        let starLevel = computeStarLevel(save, getInfo)
+        // --- 计算星星（优先使用 Nya Profiler 的预计算结果） ---
+        let starLevel
+        if (save.nyaStarCount != null) {
+            starLevel = save.nyaStarCount
+        } else {
+            starLevel = computeStarLevel(save, getInfo)
+        }
 
-        // --- 计算全存档谱面统计 ---
-        let { stats } = computeAllChartStats(save, getInfo)
+        // --- 谱面完成统计（优先使用 Nya Profiler 的 chartProgress） ---
+        let stats
+        if (save.nyaChartProgress) {
+            // 将 API 的 chartProgress 转为 stats 格式
+            // API: { CL: {all,ap,fc,cl}, CB: {...}, SK: {...}, DZ: {...} }
+            // stats: [{title:'DZ',c,fc,ap}, {title:'SK',c,fc,ap}, {title:'CB',c,fc,ap}, {title:'CL',c,fc,ap}]
+            let cp = save.nyaChartProgress
+            let diffOrder = ['DZ', 'SK', 'CB', 'CL']
+            stats = diffOrder.map(code => ({
+                title: code,
+                c: (cp[code]?.cl || cp[code]?.c || 0),
+                fc: (cp[code]?.fc || 0),
+                ap: (cp[code]?.ap || 0)
+            }))
+        } else {
+            let result = computeAllChartStats(save, getInfo)
+            stats = result.stats
+        }
 
         // --- 构建 B20 成绩列表 ---
         let allV3 = true
@@ -468,6 +489,10 @@ export class miluser extends milPluginBase {
                 if (gv < 4.0) allV3 = false
             }
 
+            // 显示分取最高分（可能不同于计算 Reality 的版本），匹配游戏内行为
+            let displayScore = record._displayScore != null ? record._displayScore : record.score
+            let displayAcc = record._displayAccuracy != null ? record._displayAccuracy : (record.score_accuracy || 0)
+
             scoreData.push({
                 song: songName,
                 artist: songArtist,
@@ -476,8 +501,8 @@ export class miluser extends milPluginBase {
                 levelAbbr: fCompute.LevelAbbr[diffLevel] || diffLevel,
                 difficulty,
                 bpm,
-                score: record.score,
-                accuracy: record.score_accuracy || 0,
+                score: displayScore,
+                accuracy: displayAcc,
                 reality: singleRlt,
                 grade: gradeInfo.grade,
                 gradeIcon: gradeInfo.iconName,
@@ -690,10 +715,10 @@ export class miluser extends milPluginBase {
                     ]
                 },
                 {
-                    group: '云存档',
+                    group: '云存档 / 查分',
                     list: [
-                        { title: `/${cmd} bind`, desc: '授权 Milthm 云存档（自动续期）' },
-                        { title: `/${cmd} update`, desc: '从云端下载并导入最新存档' },
+                        { title: `/${cmd} bind`, desc: '授权云存档或查分器（自动续期）' },
+                        { title: `/${cmd} update`, desc: '从云端 / 查分器获取并导入最新数据' },
                         { title: `/${cmd} unbind`, desc: `解除授权（不删除本地存档）` }
                     ]
                 },
@@ -731,8 +756,8 @@ async function renderScore(save, songKey) {
         if (record) {
             let gradeInfo = getGradeForRecord(record, chart)
             let singleRlt = calcReality(record.score, chart.difficulty, parseGameVersion(record.game_version), record.score_accuracy)
-            // saves.db 不含判定明细，不显示判定详细
-            let showJudges = record._source !== 'saves'
+            // saves.db / nya_profiler 不含判定明细，不显示判定详细
+            let showJudges = record._source !== 'saves' && record._source !== 'nya_profiler'
 
             scoreData.push({
                 level,

@@ -47,3 +47,12 @@ client_id: ""
 
 #  Milthm 云存档 OIDC client_secret（留空禁用）
 client_secret: ""
+
+#  Re Nya Profiler API Key（留空禁用）
+#  在 https://renya.mhtl.im/apikey 创建
+#  优先级低于官方 OIDC（client_id），仅当 client_id 未配置时才使用此接口
+nya_api_key: ""
+
+#  Nya Profiler 缓存有效期（小时），最小 1 小时，默认 2 小时
+#  缓存有效期内重复请求将提示用户等待，避免浪费每日下载次数（上限5次/天）
+nyaCacheTTL: 2

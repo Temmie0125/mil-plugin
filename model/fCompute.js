@@ -10,9 +10,10 @@ const MAX_DIFFICULTY = 16.0
 /**
  * 根据分数计算评级 (Milthm rating)
  * @param {number} score 分数 0~1010000
- * @returns {string} 评级: M, SS, S, A, B, C, F
+ * @returns {string} 评级: R, M, SS, S, A, B, C, F
  */
 function getScoreGrade(score) {
+    if (score == 1010000) return 'R'
     if (score >= 1000000) return 'M'
     if (score >= 950000) return 'SS'
     if (score >= 850000) return 'S'

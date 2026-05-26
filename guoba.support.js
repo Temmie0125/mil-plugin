@@ -183,6 +183,33 @@ export function supportGuoba() {
                         type: 'password',
                     },
                 },
+                {
+                    label: '',
+                    component: 'Divider'
+                },
+                {
+                    field: 'nya_api_key',
+                    label: 'Nya Profiler API Key',
+                    bottomHelpMessage: 'Re Nya Profiler API Key，在 https://renya.mhtl.im/apikey 创建。优先级低于官方 OIDC，仅当 client_id 未配置时才使用此接口',
+                    component: 'Input',
+                    required: false,
+                    componentProps: {
+                        placeholder: '请输入 Nya Profiler API Key',
+                        type: 'password',
+                    },
+                },
+                {
+                    field: 'nyaCacheTTL',
+                    label: 'Nya 缓存有效期（小时）',
+                    bottomHelpMessage: '缓存有效期内重复请求将提示等待，避免浪费每日下载次数（上限5次/天）。最小1小时，默认2小时',
+                    component: 'InputNumber',
+                    required: true,
+                    componentProps: {
+                        min: 1,
+                        max: 24,
+                        placeholder: '请输入缓存有效期（1~24小时）',
+                    },
+                },
             ],
             getConfigData() {
                 const defset = Config.getdefSet('config')

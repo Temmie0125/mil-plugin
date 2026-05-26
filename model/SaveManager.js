@@ -33,8 +33,12 @@ export default class SaveManager {
         this.username = ''
         /** @type {string} 用户ID */
         this.user_id = ''
-        /** @type {'unknown'|'data'|'saves'} 存档来源类型 */
+        /** @type {'unknown'|'data'|'saves'|'nya_profiler'} 存档来源类型 */
         this.saveType = 'unknown'
+        /** @type {object|null} Nya Profiler chartProgress（谱面完成统计） */
+        this.nyaChartProgress = null
+        /** @type {number|null} Nya Profiler starCount（星级） */
+        this.nyaStarCount = null
     }
 
     /**
@@ -368,6 +372,8 @@ export default class SaveManager {
             user_id: this.user_id,
             saveType: this.saveType,
             scores: this.scores,
+            nyaChartProgress: this.nyaChartProgress || null,
+            nyaStarCount: this.nyaStarCount ?? null,
             updatedAt: new Date().toISOString()
         }
         fs.writeFileSync(this.cachePath, JSON.stringify(cacheData, null, '\t'))
@@ -385,6 +391,8 @@ export default class SaveManager {
                 this.user_id = data.user_id || ''
                 this.scores = data.scores || []
                 this.saveType = data.saveType || 'unknown'
+                this.nyaChartProgress = data.nyaChartProgress || null
+                this.nyaStarCount = data.nyaStarCount ?? null
                 return true
             } catch (e) {
                 return false
@@ -479,20 +487,31 @@ export default class SaveManager {
     getB20WithReality(n = 20, getInfo) {
         this.ensureLoaded()
 
-        // 1. 为每条成绩按对应版本公式计算 Reality
+        // 1. 为每条成绩计算 Reality
+        //    Nya Profiler 数据直接使用 API 返回的 singleRating（本地 info.json 定数可能不同）
         let scored = this.scores.map(record => {
-            let difficulty = this.getChartDifficulty(record.chart_id, getInfo)
-            let gameVer = parseGameVersion(record.game_version)
-            let singleRlt = calcReality(record.score, difficulty, gameVer, record.score_accuracy)
+            let singleRlt, difficulty
+            if (record._nyaSingleRating != null) {
+                singleRlt = record._nyaSingleRating
+                difficulty = record._nyaDifficulty || 0
+            } else {
+                difficulty = this.getChartDifficulty(record.chart_id, getInfo)
+                let gameVer = parseGameVersion(record.game_version)
+                singleRlt = calcReality(record.score, difficulty, gameVer, record.score_accuracy)
+            }
             return { ...record, _reality: singleRlt, _difficulty: difficulty }
         })
 
-        // 2. 按 chart_id 分组，每组取 Reality 最高的记录
+        // 2. 按 chart_id 分组：取 Reality 最高的记录用于排名，同时记录最高分用于显示
         let bestPerChart = {}
+        let maxScorePerChart = {}
         for (let s of scored) {
             let cid = s.chart_id
             if (!bestPerChart[cid] || s._reality > bestPerChart[cid]._reality) {
                 bestPerChart[cid] = s
+            }
+            if (!maxScorePerChart[cid] || s.score > maxScorePerChart[cid].score) {
+                maxScorePerChart[cid] = { score: s.score, accuracy: s.score_accuracy || 0 }
             }
         }
         let bestList = Object.values(bestPerChart)
@@ -500,10 +519,18 @@ export default class SaveManager {
         // 3. 按 Reality 从高到低排序
         bestList.sort((a, b) => b._reality - a._reality)
 
-        // 4. 取前 N
-        let topN = bestList.slice(0, Math.min(n, bestList.length))
+        // 4. 取前 N，附上该谱面的最高分（游戏内显示最高分而非计算 Reality 那版的分数）
+        let topN = bestList.slice(0, Math.min(n, bestList.length)).map(s => {
+            let cid = s.chart_id
+            let maxInfo = maxScorePerChart[cid]
+            return {
+                ...s,
+                _displayScore: maxInfo ? maxInfo.score : s.score,
+                _displayAccuracy: maxInfo ? maxInfo.accuracy : (s.score_accuracy || 0)
+            }
+        })
 
-        // 5. 计算 B20 Reality（直接使用已计算的 _reality，确保版本公式正确）
+        // 5. 计算 B20 Reality
         let top20 = topN.slice(0, Math.min(20, topN.length))
         let reality = top20.length > 0
             ? top20.reduce((sum, s) => sum + s._reality, 0) / top20.length
@@ -550,8 +577,8 @@ export default class SaveManager {
 
         let gradeInfo
 
-        if (score._source === 'saves') {
-            // saves.db: BestLevel 定分数评级，acc=100% 判定 AP，AchievedStatus 含 4 判定 FC
+        if (score._source === 'saves' || score._source === 'nya_profiler') {
+            // saves.db / nya_profiler: BestLevel 定分数评级，acc=100% 判定 AP，AchievedStatus 含 4 判定 FC
             let scoreGrade = (score._bestLevel != null && BEST_LEVEL_GRADE[score._bestLevel]) || fCompute.getScoreGrade(score.score)
             let isAP = score.score_accuracy >= 0.9999
             let isFC = Array.isArray(score._achievedStatus) && score._achievedStatus.includes(4)
@@ -592,6 +619,119 @@ export default class SaveManager {
     }
 
     /**
+     * 从 Nya Profiler API 查询结果导入成绩
+     * 将 best20 + extras 转为内部格式，并与现有本地数据合并（各谱面保留最高分）
+     * @param {object} queryResult - NyaProfilerAuth.queryUserData 的返回结果
+     * @param {object} getInfo - getInfo 实例（用于难度映射）
+     * @returns {{success: boolean, msg?: string, username?: string, mergedCount?: number, newCount?: number}}
+     */
+    importFromNyaProfiler(queryResult, getInfo) {
+        let { username, best20, extras } = queryResult
+
+        if ((!best20 || best20.length === 0) && (!extras || extras.length === 0)) {
+            return { success: false, msg: 'Nya Profiler 返回的成绩数据为空' }
+        }
+
+        // 合并 best20 + extras
+        let allNyaScores = [...(best20 || []), ...(extras || [])]
+
+        // 按游戏内规则从分数计算评级，不依赖 Nya API 的 rank 字段
+        // 分数评级 → BestLevel 映射（fCompute.getScoreGrade → _bestLevel）
+        const SCORE_GRADE_TO_BEST_LEVEL = {
+            'R':0, 'M': 1, 'SS': 2, 'S': 3, 'A': 4, 'B': 5, 'C': 6, 'F': 7
+        }
+
+        // 转换为内部格式
+        let nyaRecords = allNyaScores.map(entry => {
+            let gameVersion = entry.isV3 ? 'v4.0' : 'v3.0'
+            let scoreGrade = fCompute.getScoreGrade(entry.score)
+            let bestLevel = SCORE_GRADE_TO_BEST_LEVEL[scoreGrade] ?? 7 // 默认 F
+            let achievedStatus = []
+            if (entry.isFC) achievedStatus.push(4)
+
+            return {
+                chart_id: entry.chart_id,
+                score: entry.score,
+                // AP 记录强制 accuracy=1.0，确保 getGradeForRecord 的 AP 判定生效
+                score_accuracy: entry.isAP ? 1.0 : (entry.accuracy || 0),
+                score_exact_count: 0,
+                score_perfect_count: 0,
+                score_good_count: 0,
+                score_bad_count: 1,      // 非0标记以区别于未游玩
+                score_miss_count: 0,
+                score_great_count: 0,
+                score_fracture_exact_count: 0,
+                score_fracture_miss_count: 0,
+                played_at: null,
+                game_version: gameVersion,
+                // 转为游戏内评级体系（R/M/SS/S/A/B/C/F），与 saves.db 一致
+                grade: BEST_LEVEL_GRADE[bestLevel] || '',
+                _bestLevel: bestLevel,
+                _achievedStatus: achievedStatus,
+                _source: 'nya_profiler',
+                // API 预计算值（用于精确 Reality 和更新界面回退）
+                _nyaSingleRating: entry.singleRating,
+                _nyaDifficulty: entry.isV3 ? (entry.constantv3 || entry.constant || 0) : (entry.constant || 0),
+                _nyaSongName: entry.name || '',
+                _nyaCategory: entry.category || ''
+            }
+        })
+
+        // 加载现有本地数据
+        if (this.scores.length === 0) {
+            this.loadCache()
+        }
+
+        // 合并：按 (chart_id, 版本组) 去重，各组保留最高分
+        // 版本组分离避免 V2/V3 混算导致 Reality 偏差（Nya 数据全为 V3，本地可能含 V2）
+        let merged = {}
+        for (let record of this.scores) {
+            let versionGroup = this._versionGroup(record.game_version)
+            let key = `${record.chart_id}__${versionGroup}`
+            if (!merged[key] || record.score > merged[key].score) {
+                merged[key] = record
+            }
+        }
+
+        let newCount = 0
+        for (let record of nyaRecords) {
+            let versionGroup = this._versionGroup(record.game_version)
+            let key = `${record.chart_id}__${versionGroup}`
+            if (!merged[key]) {
+                merged[key] = record
+                newCount++
+            } else if (record.score > merged[key].score) {
+                merged[key] = record
+                newCount++
+            }
+            // 分数未超过则跳过
+        }
+
+        this.scores = Object.values(merged)
+        this.username = username || this.username || 'Unknown'
+        this.user_id = this.user_id || 'nya_profiler'
+        this.saveType = this.saveType === 'unknown' ? 'nya_profiler' : this.saveType
+
+        // 存储 Nya Profiler 特有的计算结果
+        if (queryResult.chartProgress) {
+            this.nyaChartProgress = queryResult.chartProgress
+        }
+        if (queryResult.starCount != null) {
+            this.nyaStarCount = queryResult.starCount
+        }
+
+        // 仅在合并后有变化或首次加载时才标记为需要保存
+        this.saveCache()
+
+        return {
+            success: true,
+            username: this.username,
+            mergedCount: this.scores.length,
+            newCount
+        }
+    }
+
+    /**
      * 删除存档
      */
     deleteSave() {
@@ -601,6 +741,8 @@ export default class SaveManager {
             this.scores = []
             this.username = ''
             this.saveType = 'unknown'
+            this.nyaChartProgress = null
+            this.nyaStarCount = null
             return true
         } catch (e) {
             return false
