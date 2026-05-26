@@ -6,9 +6,9 @@ export function supportGuoba() {
         pluginInfo: {
             name: 'mil-plugin',
             title: 'Mil-Plugin',
-            author: '@mil-plugin',
-            authorLink: '',
-            link: '',
+            author: 'Temmie',
+            authorLink: 'https://github.com/Temmie0125',
+            link: 'https://github.com/Temmie0125/mil-plugin',
             isV3: true,
             isV2: false,
             description: 'Milthm游戏查分及图鉴插件',
@@ -141,6 +141,35 @@ export function supportGuoba() {
                     label: '自动更新曲绘',
                     bottomHelpMessage: '插件本体更新后是否自动同步更新曲绘资源',
                     component: 'Switch',
+                },
+                {
+                    label: '',
+                    component: 'Divider'
+                },
+                {
+                    label: '云存档设置',
+                    component: 'SOFT_GROUP_BEGIN'
+                },
+                {
+                    field: 'client_id',
+                    label: 'Client ID',
+                    bottomHelpMessage: 'Milthm 云存档 OIDC 客户端 ID，留空则禁用云存档功能',
+                    component: 'Input',
+                    required: false,
+                    componentProps: {
+                        placeholder: '请输入 client_id',
+                    },
+                },
+                {
+                    field: 'client_secret',
+                    label: 'Client Secret',
+                    bottomHelpMessage: 'Milthm 云存档 OIDC 客户端密钥，留空则禁用云存档功能',
+                    component: 'Input',
+                    required: false,
+                    componentProps: {
+                        placeholder: '请输入 client_secret',
+                        type: 'password',
+                    },
                 },
             ],
             getConfigData() {

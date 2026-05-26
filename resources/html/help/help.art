@@ -1,0 +1,37 @@
+{{extend defaultLayout}}
+
+{{block 'css'}}
+<link rel="stylesheet" href="{{_res_path}}html/help/help.css">
+{{/block}}
+
+{{block 'main'}}
+
+<div class="help-header">
+    <div class="title">{{title}}</div>
+    <div class="subtitle">{{subTitle}}</div>
+</div>
+
+{{each helpGroup group}}
+<div class="help-group">
+    <div class="group-title">{{group.group}}</div>
+    <div class="group-body">
+        {{each group.list item}}
+        <div class="cmd-row">
+            <span class="cmd-title">{{item.title}}</span>
+            <span class="cmd-desc">{{item.desc}}</span>
+        </div>
+        {{/each}}
+    </div>
+</div>
+{{/each}}
+
+<div class="createdbox">
+    <div class="mil-plugin">
+        <p>mil-plugin</p>
+    </div>
+    <div class="ver">
+        <p>{{version}}</p>
+    </div>
+</div>
+
+{{/block}}

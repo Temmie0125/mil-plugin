@@ -1,5 +1,6 @@
 node_modules/
 data/saves/
+data/tokens/
 config/config/
 resources/origin_ill/
 .DS_Store

@@ -56,6 +56,25 @@ export default class SaveManager {
                 return { success: false, msg: '文件不存在，请重新上传！' }
             }
 
+            // 预检：读取文件头部用于诊断
+            let fileStat = fs.statSync(filePath)
+            let headBuf = Buffer.alloc(Math.min(100, fileStat.size))
+            let fd = fs.openSync(filePath, 'r')
+            fs.readSync(fd, headBuf, 0, headBuf.length, 0)
+            fs.closeSync(fd)
+            let headHex = headBuf.toString('hex')
+            let headText = headBuf.toString('utf8').replace(/[\x00-\x1f]/g, '.')
+            let isSQLite = headHex.startsWith('53514c697465') // "SQLite" magic header
+            let isJSON = headText.trimStart().startsWith('{')
+            logger.debug(`[mil-plugin] 导入存档预检:`, {
+                filePath,
+                size: fileStat.size,
+                headHex,
+                headText: headText.substring(0, 100),
+                isSQLite,
+                isJSON
+            })
+
             // 确保目录存在
             let saveDir = `${process.cwd()}/plugins/mil-plugin/data/saves`
             if (!fs.existsSync(saveDir)) {
@@ -214,6 +233,16 @@ export default class SaveManager {
             return { success: false, msg: 'saves.db 中未找到玩家存档数据！' }
         }
 
+        return this._processSaveJSON(saveData)
+    }
+
+    /**
+     * 处理 saves 格式的 JSON 存档数据（SongRecords + SongRecordsV3）
+     * 供 parseSavesDB 和 parseJSONSave 共用
+     * @param {object} saveData - 已解析的存档 JSON 对象
+     * @returns {{success: boolean, msg?: string, username?: string, saveType?: string}}
+     */
+    _processSaveJSON(saveData) {
         // 提取基本信息
         this.username = saveData.Nickname || saveData.Username || 'Unknown'
         this.user_id = saveData.UserID || 'offline'
@@ -274,6 +303,28 @@ export default class SaveManager {
             username: this.username,
             saveType: 'saves'
         }
+    }
+
+    /**
+     * 直接解析云存档 JSON（非 SQLite 格式，与 saves.db kv 表内 JSON 结构一致）
+     * @param {string} jsonStr - JSON 字符串
+     * @returns {{success: boolean, msg?: string, username?: string, saveType?: string}}
+     */
+    parseJSONSave(jsonStr) {
+        let saveData
+        try {
+            saveData = JSON.parse(jsonStr)
+        } catch (e) {
+            logger.error('[mil-plugin] 云存档 JSON 解析失败:', e.message)
+            return { success: false, msg: `云存档 JSON 解析失败: ${e.message}` }
+        }
+
+        if (!saveData || (!saveData.SongRecords && !saveData.SongRecordsV3)) {
+            logger.error('[mil-plugin] 云存档 JSON 中未找到成绩数据, 顶层 keys:', saveData ? Object.keys(saveData) : 'null')
+            return { success: false, msg: '云存档 JSON 中未找到成绩数据（缺少 SongRecords / SongRecordsV3）' }
+        }
+
+        return this._processSaveJSON(saveData)
     }
 
     /**

@@ -1,0 +1,128 @@
+/* 帮助菜单样式 */
+
+body {
+    width: 860px;
+    flex-direction: column;
+    padding-bottom: 3rem;
+}
+
+.background img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(80px) brightness(0.3);
+}
+
+/* 标题区域 */
+.help-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2.5rem 0 1.5rem;
+    z-index: 1;
+}
+
+.help-header .title {
+    font-size: 2.4rem;
+    font-weight: bold;
+    color: #fff;
+    letter-spacing: 0.15em;
+}
+
+.help-header .subtitle {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.55);
+    margin-top: 0.5rem;
+}
+
+/* 分组卡片 */
+.help-group {
+    margin: 0 2rem 1.2rem;
+    z-index: 1;
+}
+
+.group-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.85);
+    padding: 0.6rem 1.2rem;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    border-radius: 12px 12px 0 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: none;
+}
+
+.group-body {
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+    border-radius: 0 0 12px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: none;
+    padding: 0.5rem 0;
+}
+
+/* 命令行 */
+.cmd-row {
+    display: flex;
+    align-items: center;
+    padding: 0.55rem 1.4rem;
+    gap: 0.8rem;
+}
+
+.cmd-row + .cmd-row {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.cmd-title {
+    font-size: 1rem;
+    color: #ceb78b;
+    white-space: nowrap;
+    min-width: 0;
+    flex-shrink: 0;
+}
+
+.cmd-desc {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* 版本 */
+/* 底部 */
+.createdbox {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    margin-top: 3%;
+    margin-bottom: 3%;
+    justify-content: center;
+    z-index: 1;
+}
+
+.createdbox p {
+    color: white;
+    font-size: 70px;
+}
+
+.mil-plugin {
+    display: flex;
+    z-index: 1;
+    justify-content: center;
+    align-items: center;
+}
+
+.ver {
+    display: flex;
+    z-index: 1;
+}
+
+.mil-plugin p {
+    font-size: xx-large;
+    text-shadow: 0 0 20px rgb(0 186 255);
+}
+
+.ver p {
+    font-size: large;
+    text-shadow: 0 0 20px #fff700;
+}

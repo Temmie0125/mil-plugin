@@ -36,3 +36,11 @@ githubProxy: false
 
 #  插件更新后是否自动更新曲绘（true/false）
 autoPullIll: false
+
+#  ************ 【云存档设置】 *************
+
+#  Milthm 云存档 OIDC client_id（留空禁用）
+client_id: ""
+
+#  Milthm 云存档 OIDC client_secret（留空禁用）
+client_secret: ""

@@ -47,6 +47,22 @@ class GetSave {
     }
 
     /**
+     * 从 JSON 字符串导入云存档
+     * @param {string} userId
+     * @param {string} jsonStr - 云存档 JSON 字符串
+     * @returns {{success: boolean, msg: string, username?: string, saveType?: string}}
+     */
+    importFromJSON(userId, jsonStr) {
+        let save = new SaveManager(userId)
+        let result = save.parseJSONSave(jsonStr)
+        if (result.success) {
+            this.saves[userId] = save
+            save.saveCache()
+        }
+        return result
+    }
+
+    /**
      * 删除用户存档
      * @param {string} userId
      */

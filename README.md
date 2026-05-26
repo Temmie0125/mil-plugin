@@ -52,7 +52,7 @@ pnpm install
 
 * [ ] 定数表
 
-* [ ] 接入云存档系统
+* [x] 接入云存档系统
 
 * [ ] 指令修改部分设置
 
@@ -80,6 +80,63 @@ pnpm install
 | :- | :-
 | `#mil (强制\|qz)?(更新\|gx)` | 更新插件
 | `#mil downill` | 下载或更新曲绘
+
+### 存档导入方法
+
+#### 1. 本地导入
+
+直接上传你的saves.db给bot即可导入存档。
+
+存档路径：
+
+1. **Android(TapTap):**
+
+```bash
+/storage/emulated/0/Android/data/game.taptap.morizero.milthm/files/data/
+```
+
+2. **Android(Google Play):**
+
+```bash
+/storage/emulated/0/Android/data/com.morizero.milthm/files/data/
+```
+
+3. **IOS:**
+
+使用 文件 应用打开 Milthm 文件夹：
+
+```bash
+data/
+```
+
+4. **Windows**
+
+```bash
+%AppData%\..\LocalLow\Morizero\Milthm\data\
+```
+
+5. **MacOS***
+
+```bash
+/Library/Application Support/Morizero/Milthm/data/
+```
+
+6. **Linux**
+
+```bash
+~/.config/unity3d/Morizero/Milthm/data/
+```
+
+#### 2.对接云存档
+
+> [!WARNING]
+> 云存档功能需要自行配置Cilent_id和Cilent_secret，可自行前往申请获取，此处不提供获取方式
+
+配置完上述内容之后，使用`/mil bind`，bot会发送一个授权链接，在有效期内完成授权即可。
+
+之后可以使用`/mil update`更新你的云存档。
+
+注意：Milthm游戏内不会自动同步云存档，打完歌需要手动上传存档。
 
 ### 免责声明
 

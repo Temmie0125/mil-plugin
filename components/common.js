@@ -108,7 +108,7 @@ export function getFileInfo(e) {
         fileId = e.file.file_id || e.file.id || '';
     }
     if (!fileName || !fileSize || !fileId) {
-        logger.warn("[课表导入] 无法提取完整的文件信息", { eFile: e.file });
+        logger.warn("[mil-plugin] 无法提取完整的文件信息", { eFile: e.file });
         return null;
     }
     return { fileName, fileSize, fileId, busid };

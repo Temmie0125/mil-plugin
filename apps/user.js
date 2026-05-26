@@ -151,11 +151,11 @@ export class miluser extends milPluginBase {
             let saveType = result.saveType || 'data'
             let saveTypeName = saveType === 'saves' ? 'saves.db（推荐）' : 'data.db'
             let saveTypeHint = saveType === 'saves'
-                ? '\n💡 已使用 saves.db，数据更精确（BestLevel 为游戏官方评级）'
-                : '\n💡 提示：推荐使用 saves.db（而非 data.db），评级数据更精确！'
-            send.send_with_At(e, `✅ ${result.msg}\n用户名：${result.username}\n数据来源：${saveTypeName}\n共导入${getSave.saves[e.user_id]?.scores?.length || 0}条成绩记录${saveTypeHint}\n现在可以查询成绩了！`);
+                ? '\n'
+                : '\n提示：推荐使用 saves.db（而非 data.db）'
+            send.send_with_At(e, `${result.msg}\n用户名：${result.username}\n数据来源：${saveTypeName}\n共导入${getSave.saves[e.user_id]?.scores?.length || 0}条成绩记录${saveTypeHint}\n现在可以查询成绩了！`);
         } else {
-            send.send_with_At(e, `❌ ${result.msg}`);
+            send.send_with_At(e, `${result.msg}`);
         }
         return true;
     }
@@ -180,7 +180,7 @@ export class miluser extends milPluginBase {
     async b20(e) {
         let save = await getSave.getSave(e.user_id)
         if (!save || (!save.hasSave() && save.scores.length === 0)) {
-            send.send_with_At(e, `你还没有导入存档哦！\n请先发送存档文件(.db)给BOT进行导入哦`)
+            send.send_with_At(e, `你还没有导入存档哦！\n请先使用/${Config.getUserCfg('config', 'cmdhead')} bind绑定存档，或者发送存档文件(.db)给BOT进行导入哦`)
             return true
         }
 
@@ -299,7 +299,7 @@ export class miluser extends milPluginBase {
     async singlescore(e) {
         let save = await getSave.getSave(e.user_id)
         if (!save || (!save.hasSave() && save.scores.length === 0)) {
-            send.send_with_At(e, `你还没有导入存档哦！\n请先发送存档文件(saves.db)给BOT，进行导入嗷`)
+            send.send_with_At(e, `你还没有导入存档哦！\n请先使用/${Config.getUserCfg('config', 'cmdhead')} bind绑定存档，或发送存档文件(saves.db)给BOT，进行导入嗷`)
             return true
         }
 
@@ -330,7 +330,7 @@ export class miluser extends milPluginBase {
     async data(e) {
         let save = await getSave.getSave(e.user_id)
         if (!save || (!save.hasSave() && save.scores.length === 0)) {
-            send.send_with_At(e, `你还没有导入存档哦！`)
+            send.send_with_At(e, `你还没有导入存档哦！请先使用/${Config.getUserCfg('config', 'cmdhead')} bind绑定存档，或发送存档文件进行导入哦`)
             return true
         }
 
@@ -364,9 +364,9 @@ export class miluser extends milPluginBase {
         let avgAcc = scores.length > 0 ? (totalAcc / scores.length * 100).toFixed(2) : 0
 
         let saveTypeNote = player.saveType === 'saves'
-            ? '\n📊 数据来源：saves.db（BestLevel 官方评级）'
+            ? '\n数据来源：saves.db'
             : player.saveType === 'data'
-                ? '\n📊 数据来源：data.db（提示：saves.db 评级更精确）'
+                ? '\n数据来源：data.db'
                 : ''
 
         let msg = `====== ${player.username} 的数据统计 ======\n`
@@ -385,29 +385,57 @@ export class miluser extends milPluginBase {
     }
 
     /**
-     * 帮助
+     * 帮助（图像化）
      */
     async help(e) {
         let cmd = Config.getUserCfg('config', 'cmdhead')
-        let msg = `====== Milthm插件 帮助 ======\n`
-        msg += `\n【曲目信息】\n`
-        msg += `/${cmd} song <曲名>  - 查看曲目图鉴（图片）\n`
-        msg += `/${cmd} ill <曲名>    - 查看曲绘\n`
-        msg += `/${cmd} alias <曲名>  - 查看别名\n`
-        msg += `/${cmd} setnick <原名> ---> <别名> - 设置别名(管理员)\n`
-        msg += `\n【成绩查询】\n`
-        msg += `直接发送存档文件  - 导入存档\n`
-        msg += `  ⭐ 推荐上传 saves.db（数据更精确！）\n`
-        msg += `  ⚠️ data.db 仍可导入，但评级可能不如 saves.db 准确\n`
-        msg += `/${cmd} b20 - 查询Best成绩\n`
-        msg += `  例: /${cmd} b20 或 /${cmd} b30\n`
-        msg += `/${cmd} score <曲名> - 单曲成绩\n`
-        msg += `/${cmd} data - 数据统计\n`
-        msg += `/${cmd} delsave - 删除存档\n`
-        msg += `\n【其他】\n`
-        msg += `/${cmd} tips - 随机小贴士\n`
 
-        send.send_with_At(e, msg)
+        // 随机背景曲绘
+        let bgIll = getInfo.getill(getInfo.all_id[fCompute.randBetween(0, getInfo.all_id.length - 1)] || '')
+
+        let data = {
+            title: 'Milthm 帮助',
+            subTitle: 'mil-plugin',
+            background: bgIll,
+            version: Version.ver,
+            helpGroup: [
+                {
+                    group: '曲目信息',
+                    list: [
+                        { title: `/${cmd} song <曲名>`, desc: '查看曲目图鉴（图片）' },
+                        { title: `/${cmd} ill <曲名>`, desc: '查看曲绘' },
+                        { title: `/${cmd} alias <曲名>`, desc: '查看别名' },
+                        { title: `/${cmd} setnick <原名> ---> <别名>`, desc: '设置别名（管理员）' }
+                    ]
+                },
+                {
+                    group: '成绩查询',
+                    list: [
+                        { title: '发送 saves.db 文件', desc: '导入存档（推荐 saves.db，数据更精确）' },
+                        { title: `/${cmd} b20 [数量]`, desc: '查询 Best 成绩，例: /mil b30' },
+                        { title: `/${cmd} score <曲名>`, desc: '单曲成绩明细' },
+                        { title: `/${cmd} data`, desc: '数据统计' },
+                        { title: `/${cmd} delete`, desc: '删除存档' }
+                    ]
+                },
+                {
+                    group: '云存档',
+                    list: [
+                        { title: `/${cmd} bind`, desc: '授权 Milthm 云存档（自动续期）' },
+                        { title: `/${cmd} update`, desc: '从云端下载并导入最新存档' },
+                        { title: `/${cmd} unbind`, desc: `解除授权（不删除本地存档）` }
+                    ]
+                },
+                {
+                    group: '其他',
+                    list: [
+                        { title: `/${cmd} tips`, desc: '随机Tips' }
+                    ]
+                }
+            ]
+        }
+
+        send.send_with_At(e, await picmodle.help(data))
         return true
     }
 }
