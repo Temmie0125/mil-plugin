@@ -5,7 +5,7 @@
   <img alt="GitHub issues" src="https://img.shields.io/github/issues/Temmie0125/mil-plugin?style=flat-square"/>
   <img alt="GitHub license" src="https://img.shields.io/github/license/Temmie0125/mil-plugin?style=flat-square"/>
   <img alt="GitHub stars" src="https://img.shields.io/github/stars/Temmie0125/mil-plugin?style=social"/>
-  <img alt="插件版本" src="https://img.shields.io/badge/插件版本-1.0.0-9cf?style=flat-square"/>
+  <img alt="插件版本" src="https://img.shields.io/badge/插件版本-1.0.1-9cf?style=flat-square"/>
   <img alt="Milthm" src="https://img.shields.io/badge/Milthm-5.3.2-9cf?style=flat-square"/>
 </p>
 
@@ -73,6 +73,9 @@ pnpm install
 | `#mil alias <曲目>` | 查看现有别名
 | `#mil score <曲目>` | 查看单曲成绩
 | `#mil delete` | 删除bot端存档数据
+| `#mil bind` | 授权云存档（需要自行配置cilent_id和cilent_secret）
+| `#mil update` | 更新存档数据
+| `#mil upbind` | 解除授权（不会删除本地存档）
 
 #### **以下为管理功能**
 
