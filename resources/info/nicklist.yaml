@@ -1,515 +1,333 @@
-# mil-plugin 默认别名（phi 风格：曲名Key → 别名列表）
-# 用户自定义别名请在 config/nickconfig.yaml 中设置
-
 Aconsma:
-  - 幻听
-
+- 幻听
 Agnostic:
-  - 不可知论者
-
+- 不可知论者
 Aleph-0:
-  - "a0"
-  - "阿列夫0"
-  - "草先生的数学课堂"
-  - "数学课"
-  - "2016冠军"
-  - "BOF2016"
-
+- 2016冠军
+- a0
+- BOF2016
+- 阿列夫0
+- 草先生的数学课堂
+- 数学课
 Algebra:
-  - "代数"
-
+- 代数
 Autumn Rain:
-  - "AutumnRain"
-  - "秋雨"
-
+- AutumnRain
+- 秋雨
 BUCHiAGE Fireworks:
-  - "BUCHiAGE烟花"
-  - "烟花"
-
+- BUCHiAGE烟花
+- 烟花
 Before it Ends:
-  - "在它结束之前"
-  - "在结束之前"
-
+- 在结束之前
+- 在它结束之前
 Bio-Engineering:
-  - "BioE"
-  - "生物工程"
-
+- BioE
+- 生物工程
 Brightened Demonios:
-  - "Brightened Demonios"
-  - "亮度恶魔"
-  - "亮化的恶魔"
-
+- 亮度恶魔
+- 亮化的恶魔
 Broken Conviction:
-  - "Broken Conviction"
-  - "万念俱灰"
-  - "破碎的信念"
-
+- 破碎的信念
+- 万念俱灰
 Chartreuse Green:
-  - "ChartreuseGreen"
-  - "黄绿色"
-
+- ChartreuseGreen
+- 黄绿色
 Class Memories:
-  - "ClassMemories"
-  - "课堂记忆"
-  - "交互课堂"
-
+- ClassMemories
+- 交互课堂
+- 课堂记忆
+- 类内存
 Contrasty Angeles:
-  - "对比度天使"
-  - "CA"
-
+- CA
+- 对比度天使
+- 反差角
 Curse of 14:
-  - "14的诅咒"
-  - "14"
-
+- '14'
+- 14的诅咒
 Deluge:
-  - "洪水"
-
+- 洪水
 Dogbite:
-  - "狗咬"
-  - "狗"
-  
-
+- 狗
+- 狗咬
 Dum! Dum!! Dum!!!:
-  - "当当当"
-  - "DDD"
-
-Elsorhg:
-  - "Elsorhg"
-
+- DDD
+- 当当当
 Ephemeric World:
-  - "泡沫世界"
-  - "短暂的世界"
-  - "EW"
-
+- EW
+- 短暂的世界
+- 泡沫世界
 FULi AUTO SHOOTER:
-  - "自动射"
-  - "福利自动射"
-
+- 福利自动射
+- 自动射
 Fantasia Sonata Arcadia:
-  - "FSA"
-  - "乌托邦"
-  - "幻想奏鸣曲：阿卡迪亚"
-  - "阿卡迪亚"
-
+- FSA
+- 阿卡迪亚
+- 幻想奏鸣曲：阿卡迪亚
+- 乌托邦
 Fantasia Sonata Botanical Garden:
-  - "FSBG"
-  - "幻想奏鸣曲：植物园"
-  - "植物园"
-
+- FSBG
+- 幻想奏鸣曲：植物园
+- 植物园
 Fantasia Sonata God Dance:
-  - "FSGD"
-  - "与神共舞"
-  - "幻想奏鸣曲：神之舞"
-  - "神之舞"
-
+- FSGD
+- 幻想奏鸣曲：神之舞
+- 神之舞
+- 与神共舞
 Fantasia Sonata Hope:
-  - "FSH"
-  - "幻想奏鸣曲：希望"
-  - "希望"
-
+- FSH
+- 幻想奏鸣曲：希望
+- 希望
 Fantasia Sonata Reflection:
-  - "FSR"
-  - "幻想奏鸣曲：映照"
-  - "映照"
-  - "长条教学"
-  - "雨丝教学"
-
+- FSR
+- 幻想奏鸣曲：映照
+- 映照
+- 雨丝教学
+- 长条教学
 Fantasia Sonata Sky Syndrome:
-  - "FSSS"
-  - "F鸟"
-  - "幻想奏鸣曲：天空综合征"
-  - "天空综合征"
-
+- FSSS
+- F鸟
+- 幻想奏鸣曲：天空综合征
+- 天空综合征
 Fantasia Sonata Stars:
-  - "FSS"
-  - "幻想奏鸣曲：群星"
-  - "群星"
-
+- FSS
+- 幻想奏鸣曲：群星
+- 群星
 Fantasia Sonata Surmount Vanity Aufleben:
-  - "FSSVA"
-  - "幻想奏鸣曲：破妄·重生"
-  - 重生
-
+- FSSVA
+- 幻想奏鸣曲：破妄·重生
+- 重生
 Fluorescent Light:
-  - "Fluorescent Light"
-  - "荧光灯"
-
+- 荧光灯
 Fly To Meteor (Milthm Edit):
-  - "Fly To Meteor"
-  - "FTM"
-  - 飞星
-  - 飞向流星
-  - 射星
-
+- Fly To Meteor
+- FTM
+- 飞向流星
+- 飞星
+- 射星
 Fly To Meteor feat.兔柒 (Milthm Edit):
-  - "Fly To Meteor feat.TuQi"
-  - "Fly To Meteor feat.兔柒"
-  - "FTM兔"
-  - "FTMT"
-  - "FTM2"
-  - "飞星2"
-  - 射星2
-  - "兔七"
-
+- Fly To Meteor feat.TuQi
+- Fly To Meteor feat.兔柒
+- FTM2
+- FTMT
+- FTM兔
+- 飞星2
+- 射星2
+- 兔七
 Fragment of Memories:
-  - "FoM"
-  - "记忆碎片"
-
+- FoM
+- 记忆碎片
 Future Unbound (Game Edit):
-  - "Future Unbound"
-  - "无界未来"
-  - "解缚未来"
-
+- Future Unbound
+- 解缚未来
+- 无界未来
 Garden:
-  - "花园"
-
+- 花园
 GlassyHeart.:
-  - "GlassyHeart"
-  - "玻璃心"
-
+- GlassyHeart
+- 玻璃心
 HYPER MEMORIES:
-  - "HYPERMEMORIES"
-  - "超记忆"
-  - "超量记忆"
-
+- HYPERMEMORIES
+- 超记忆
+- 超量记忆
 Habitable Zone:
-  - "HZ"
-  - 宜居带
-  - 适居带
-
+- HZ
+- 适居带
+- 宜居带
 Hikari:
-  - 光
-  - 光光
-
+- 光光
 IN:
-  - "Insane"
-  - "里面"
-  - "疯狂"
-
+- Insane
+- 疯狂
+- 里面
 INFP.mp3:
-  - "INFP"
-
+- INFP
 Innocent white:
-  - "Innocent white"
-  - "影虎。"
-
+- Innocent white
+- 影虎。
 Jump out?:
-  - "Jump out?"
-  - "B.R.I"
-
+- B.R.I
+- Jump out?
 KAEDE:
-  - "KAEDE"
-  - "Ocelot"
-
+- Ocelot
 KASANE:
-  - "KASANE"
-  - "Kaede Hiyama"
-
+- Kaede Hiyama
 Kayava:
-  - "Kayava"
-  - "James Primate"
-
-LOUDER!:
-  - "LOUDER!"
-  - "K1N"
-
+- James Primate
+- Kayava
 LiFE Garden:
-  - "LiFEGarden"
-  - "生命花园"
-
+- LiFEGarden
+- 生命花园
 LiFE Garden (Extended Mix):
-  - "LiFEGarden(Extended Mix)"
-  - "生命花园加长版"
-
+- LiFEGarden(Extended Mix)
+- 生命花园加长版
 Lost Civilization:
-  - "失落文明"
-  - "LC"
-  - 撬棍
-
+- LC
+- 撬棍
+- 失落文明
 Lots Of Spices:
-  - "LOS"
-  - "香料满盈"
-
+- LOS
+- 香料满盈
 Melody to Heaven:
-  - "天堂旋律"
-  - "通往天堂的旋律"
-
+- 天堂旋律
+- 通往天堂的旋律
 Meltovt Necrosys:
-  - "Meltovt Necrosys"
-
+- Meltovt Necrosys
 Moonflutter:
-  - "月之颤动"
-  - "月亮飘"
-
-Moving On:
-  - "Moving On"
-  - "Nastram"
-
-Myth compiler:
-  - "Myth compiler"
-
+- 月亮飘
+- 月之颤动
 Oiiaioooooiai:
-  - "Oiiaioooooiai"
-  - "黑瘦的鱼头"
-
-Oniichan:
-  - "Oniichan"
-  - "MoryueCi"
-
-OverRain:
-  - "OverRain"
-
+- 黑瘦的鱼头
 Polyridia:
-  - "Polyridia"
-
+- Polyridia
 Psyched Fevereiro:
-  - "Psyched Fevereiro"
-
+- Psyched Fevereiro
 Pthahnil:
-  - "Pthahnil"
-  
-
+- Pthahnil
 Rainbow Flavor!:
-  - "Rainbow Flavor!"
-  - "SuggestedCopy7 & 亚述"
-
-Regnaissance:
-  - "Regnaissance"
-  - "AiSS vs. Abit"
-
-Sakuyahime:
-  - "Sakuyahime"
-  - "MYTK"
-
-Sheer Ice Torrent:
-  - "Sheer Ice Torrent"
-  - "Connor \"12LBS\" Skidmore"
-
-Sound of Nature:
-  - "Sound of Nature"
-  - "初云CLoudie"
-
+- Rainbow Flavor!
+- SuggestedCopy7 & 亚述
 Splash the Beat!!:
-  - "Splash the Beat!!"
-  - "ああああ"
-
+- ああああ
 Sundown:
-  - "Sundown"
-  - "James Primate"
-
-Threat - Metropolis:
-  - "Threat - Metropolis"
-  - "Connor \"12LBS\" Skidmore"
-
-Threat - Sky Islands:
-  - "Threat - Sky Islands"
-  - "James Primate"
-
-Threat - Superstructure:
-  - "Threat - Superstructure"
-  - "James Primate"
-
-Threat - Waterfront Complex:
-  - "Threat - Waterfront Complex"
-  - "James Primate, Lydia Esrig, Connor \"12LBS\" Skidmore"
-
-Vestige of Dreams:
-  - "Vestige of Dreams"
-  - "DRIVE."
-
-Virtual S0da:
-  - "Virtual S0da"
-  - "Nerovix"
-
+- James Primate
+- Sundown
 WATER:
-  - "WATER"
-  - "A-39 & 沙包P"
-
+- 水
 Welcome to Milthm:
-  - "Welcome to Milthm"
-  - "TsukiP"
-
+- TsukiP
 White Lizard:
-  - "White Lizard"
-  - "Lydia Esrig"
-
-Words:
-  - "Words"
-  - "X3ll3n"
-
-apOapSis(Edit):
-  - "apOapSis(Edit)"
-  - "Euphem1a."
-
+- Lydia Esrig
 cafe in 6412I731V:
-  - "cafe in 6412I731V"
-  - "むさぬりゆ"
-
+- cafe in 6412I731V
+- むさぬりゆ
 conflict:
-  - "conflict"
-  - "siromaru + cranky"
-
+- 冲突
+- 公交车
 cybernetic blazar:
-  - "cybernetic blazar"
-  - "ああああ"
-
+- cybernetic blazar
+- ああああ
 furioso melodia:
-  - "furioso melodia"
-  - "gmtn. (witch's slave)"
-
+- furioso melodia
 'slic.hertz #GdbG':
-  - "slic.hertz GdbG"
-
+- slic.hertz GdbG
 ☹:
-  - "Blueface"
-  - "哭脸"
-  - "苦瓜脸"
-
+- Blueface
+- 哭脸
+- 苦瓜脸
 いつか忘れるんだろう:
-  - "Someday, I will Forget"
-  - "总有一天我将忘记"
-  - "总有一天我会忘记"
-  - "忘却"
-
+- Someday, I will Forget
+- 忘却
+- 总有一天我会忘记
+- 总有一天我将忘记
 はんてん:
-  - "Hanten"
-  - "反转"
-
+- Hanten
+- 反转
 イコラト:
-  - "eclat"
-  - "辉光"
-  - "辉煌"
-
+- eclat
+- 辉光
+- 辉煌
 サイクルの欠片:
-  - "Pieces of the Cycle"
-  - "循环残片"
-  - "循环的碎片"
-
+- Pieces of the Cycle
+- 循环残片
+- 循环的碎片
 ニニ (feat. Qayo & mii):
-  - "Nini"
-  - "二二"
-  - "22"
-
+- '22'
+- Nini
+- 二二
 ネオン色のまち feat. Mai:
-  - "Neon Iro no Machi feat. Mai"
-  - "霓虹城"
-  - "霓虹色的街道"
-
+- Neon Iro no Machi feat. Mai
+- 霓虹城
+- 霓虹色的街道
 ホシフルヨルニ:
-  - "Hoshifuru Yoruni"
-  - "星光璀璨之夜"
-  - "星降之夜"
-  - "星降夜"
-
+- Hoshifuru Yoruni
+- 星光璀璨之夜
+- 星降夜
+- 星降之夜
 九蓮寶燈:
-  - "Churenpoton"
-  - "九莲宝灯"
-  - "宝莲灯"
-
+- Churenpoton
+- 宝莲灯
+- 九莲宝灯
 仮想明日:
-  - "Imaginary Tomorrow"
-  - "假想明日"
-
+- Imaginary Tomorrow
+- 假想明日
 参宿四~Betelgeuse~:
-  - "Betelgeuse"
-  - "参宿四"
-
+- Betelgeuse
+- 参宿四
 命日:
-  - "Meinichi"
-  - "命日"
-  - "忌日"
-
+- Meinichi
+- 忌日
+- 命日
 夜風:
-  - "Yokaze"
-  - "夜风"
-
+- Yokaze
+- 夜风
 大月墜落狂想:
-  - "Moonfall"
-  - "大月"
-  - "大月坠落狂想"
-
+- Moonfall
+- 大月
+- 大月坠落狂想
 妹:
-  - "Imouto"
-  - "妹"
-
+- Imouto
+- 妹
 时落之雨:
-  - "Episodic Rain"
-  - "时落之雨"
-
+- Episodic Rain
+- 时落之雨
 暮予星光:
-  - "Reminiscence in Starlight"
-
+- Reminiscence in Starlight
 樱落繁花:
-  - "A Reincarnation of a Scattering Spring"
-
+- A Reincarnation of a Scattering Spring
 灯ノ桜蝶:
-  - "Akashinosakuracho"
-  - "灯之樱蝶"
-  - "灯-AKASHI-"
-
+- Akashinosakuracho
+- 灯-AKASHI-
+- 灯之樱蝶
 烁雨:
-  - "Sparkrain"
-
+- Sparkrain
 烽閻鸞錵:
-  - "Houen Ranka"
-  - "烽阎"
-
+- Houen Ranka
+- 烽阎
 瑠璃色:
-  - "liulise"
-  - "瑠璃色"
-  - "琉璃色"
-  - "琉璃"
-
+- liulise
+- 琉璃
+- 琉璃色
+- 瑠璃色
 白色の夢で。:
-  - "siroirono yumede"
-  - "白色梦"
-  - "白色的梦"
-  - "白日梦"
-
+- siroirono yumede
+- 白日梦
+- 白色的梦
+- 白色梦
 白虎蓮華:
-  - "Tiger Lotus"
-  - "白虎莲华"
-  - "白虎莲花"
-  - "白虎"
-
+- Tiger Lotus
+- 白虎
+- 白虎莲花
+- 白虎莲华
 百九十:
-  - "190"
-  - "百九十八"
-
+- '190'
+- 百九十八
 粗线条的雨:
-  - "Thick Rain"
-  - "粗线雨"
-
+- Thick Rain
+- 粗线雨
 花月:
-  - "Kagetsu"
-
+- Kagetsu
 逆飛雨:
-  - "nifeiyu"
-  - "逆飞雨"
-
+- nifeiyu
+- 逆飞雨
 选择你的宽带:
-  - "Excellent broadband, which makes my internet speed spin"
-  - "宽带"
-
+- Excellent broadband, which makes my internet speed spin
+- 宽带
 運命:
-  - "Unmei"
-  - "世界の花"
-
+- Unmei
+- 世界の花
 雨之城:
-  - "Castle in the Rain"
-  - "雨城"
-
+- Castle in the Rain
+- 雨城
 雨女:
-  - "Ameonna"
-
+- Ameonna
 靈:
-  - "Rei"
-  - "靈"
-  - "MYTK"
-  - "灵"
-
+- MYTK
+- Rei
+- 灵
+- 靈
+- 雨口口口巫
 驟雨の狭間:
-  - "Rainshower"
-  - "骤雨"
-  - "骤雨狭间"
-  - "骤雨的狭间"
+- Rainshower
+- 骤雨
+- 骤雨的狭间
+- 骤雨狭间
