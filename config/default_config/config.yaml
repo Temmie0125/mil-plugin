@@ -31,7 +31,7 @@ isGuild: false
 illDownloadUrl: "https://github.com/Temmie0125/mil-plugin-ill-low"
 
 #  GitHub 代理（留空或 false 则不使用）
-#  国内用户可设为 https://ghproxy.com/ 等加速站点
+#  国内用户可设为 https://gh-proxy.com/ 等加速站点
 githubProxy: false
 
 #  插件更新后是否自动更新曲绘（true/false）
