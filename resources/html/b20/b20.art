@@ -122,8 +122,15 @@
                     <img src="{{_res_path}}icon/{{song.gradeIcon}}.png" alt="{{song.grade}}">
                 </div>
                 <div class="chengji">
-                    <div class="score">
-                        <p>{{song.score}}</p>
+                    <div class="score-row">
+                        <div class="score">
+                            <p>{{song.score}}</p>
+                        </div>
+                        {{if song.pushText}}
+                        <div class="push-badge {{song.pushClass}}">
+                            <p>>> {{song.pushText}}</p>
+                        </div>
+                        {{/if}}
                     </div>
                     <div class="line"></div>
                     <div class="meta-row">

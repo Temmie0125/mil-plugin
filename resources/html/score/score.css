@@ -70,3 +70,20 @@
     pointer-events: none;
     z-index: 3;
 }
+
+/* 推分建议 */
+.score-push {
+    display: inline-block;
+    font-size: 13px;
+    margin-left: 12px;
+    padding: 1px 8px;
+    border-radius: 4px;
+    color: #fff;
+    white-space: nowrap;
+}
+.score-push.push-98 { background-color: rgba(255, 179, 0, 0.75); }
+.score-push.push-95 { background-color: rgba(66, 165, 245, 0.75); }
+.score-push.push-92 { background-color: rgba(102, 187, 106, 0.75); }
+.score-push.push-88 { background-color: rgba(255, 152, 0, 0.75); }
+.score-push.push-low { background-color: rgba(239, 83, 80, 0.75); }
+.score-push.push-fail { background-color: rgba(128, 128, 128, 0.5); }

@@ -171,6 +171,29 @@ function getRecordQualityRank(record, combo) {
 }
 
 /**
+ * 将推分计算结果转为模板显示用的 {pushText, pushClass}
+ * @param {number|string|null} pushDisplay - calcPushSuggestion 输出的简化值
+ * @returns {{pushText: string|null, pushClass: string}}
+ */
+function formatPushDisplay(pushDisplay) {
+    if (pushDisplay === null || pushDisplay === undefined) {
+        return { pushText: null, pushClass: '' }
+    }
+    if (pushDisplay === '无法推分') {
+        return { pushText: '无法推分', pushClass: 'push-fail' }
+    }
+    // number
+    let score = pushDisplay
+    let cls
+    if (score > 980000) cls = 'push-98'
+    else if (score >= 950000) cls = 'push-95'
+    else if (score >= 920000) cls = 'push-92'
+    else if (score >= 880000) cls = 'push-88'
+    else cls = 'push-low'
+    return { pushText: String(score), pushClass: cls }
+}
+
+/**
  * 遍历全部存档成绩，按谱面去重后统计各难度 C/FC/AP 数量
  * 同一谱面的新旧版本记录取评级最高的一条（基于原始数据字段判断）
  *
@@ -491,7 +514,7 @@ export class miluser extends milPluginBase {
             }
 
             // --- 推分建议计算 ---
-            let pushDisplay = null
+            let pushText = null, pushClass = ''
             try {
                 let pushSuggestion = calcPushSuggestion({
                     currentReality: reality,
@@ -502,7 +525,9 @@ export class miluser extends milPluginBase {
                     chartBestReality: singleRlt
                 })
                 if (pushSuggestion) {
-                    pushDisplay = pushSuggestion.achievable ? pushSuggestion.targetScore : '无法推分'
+                    let formatted = formatPushDisplay(pushSuggestion.achievable ? pushSuggestion.targetScore : '无法推分')
+                    pushText = formatted.pushText
+                    pushClass = formatted.pushClass
                 }
             } catch (err) {
                 logger.error(`[mil-plugin][推分建议] 计算失败:`, err)
@@ -529,7 +554,8 @@ export class miluser extends milPluginBase {
                 bad: record.score_bad_count || 0,
                 miss: record.score_miss_count || 0,
                 isOverflow: i >= bestNum,
-                pushDisplay    // 传入的推分建议文本，为分数值或者“无法推分”
+                pushText,
+                pushClass
             })
         }
 
@@ -594,10 +620,10 @@ export class miluser extends milPluginBase {
 
         let msg2 = `====== 单曲 Reality 计算 ======\n`
         msg2 += `定数: ${difficulty.toFixed(1)}\n`
-        msg2 += `分数: ${score}\n\n`
+        msg2 += `分数: ${score}\n`
         msg2 += `------ 公式结果 ------\n`
         msg2 += `V2 公式: ${v2.toFixed(4)}\n`
-        msg2 += `V3 公式: ${v3.toFixed(4)}\n\n`
+        msg2 += `V3 公式: ${v3.toFixed(4)}\n`
         msg2 += `------ 实际采用 ------\n`
         msg2 += `旧版 (<4.0): ${rltOld.toFixed(4)}\n`
         msg2 += `新版 (≥4.0): ${rltNew.toFixed(4)}\n`
@@ -772,7 +798,7 @@ async function renderScore(save, songKey) {
         let record = save.getChartScore(chart.chartid)
 
         // --- 推分建议计算 ---
-        let pushDisplay = null
+        let pushText = null, pushClass = ''
         try {
             let chartBestRlt = 0
             let chartBestScore = 0
@@ -789,8 +815,10 @@ async function renderScore(save, songKey) {
                 chartBestReality: chartBestRlt
             })
             if (pushSuggestion) {
-                pushDisplay = pushSuggestion.achievable ? pushSuggestion.targetScore : '无法推分'
-                logger.info(`[mil-plugin][推分建议] ${info.song} [${fCompute.LevelAbbr[level]}] 推分建议: ${pushDisplay}`)
+                let formatted = formatPushDisplay(pushSuggestion.achievable ? pushSuggestion.targetScore : '无法推分')
+                pushText = formatted.pushText
+                pushClass = formatted.pushClass
+                // logger.info(`[mil-plugin][推分建议] ${info.song} [${fCompute.LevelAbbr[level]}] 推分建议:`, JSON.stringify(pushSuggestion))
             }
         } catch (err) {
             logger.error(`[mil-plugin][推分建议] 计算失败:`, err)
@@ -820,7 +848,8 @@ async function renderScore(save, songKey) {
                 showJudges,
                 notPlayed: false,
                 played_at: record.played_at ? fCompute.formatDate(record.played_at) : '',
-                pushDisplay
+                pushText,
+                pushClass
             })
         } else {
             // 未游玩该难度
@@ -836,7 +865,8 @@ async function renderScore(save, songKey) {
                 gradeIcon: '',
                 notPlayed: true,
                 showJudges: false,
-                pushDisplay
+                pushText,
+                pushClass
             })
         }
     }

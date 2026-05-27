@@ -62,7 +62,12 @@
                 </div>
                 {{/if}}
             </div>
-            <div class="score-dif-value">{{data.score}}</div>
+            <div class="score-dif-value">
+                {{data.score}}
+                {{if data.pushText}}
+                <span class="score-push {{data.pushClass}}">>> {{data.pushText}}</span>
+                {{/if}}
+            </div>
             <div class="score-dif-detail">
                 <span>Acc: {{(data.accuracy * 100).toFixed(2)}}%</span>
                 <span>Reality: {{data.reality.toFixed(2)}}</span>
