@@ -7,18 +7,16 @@
 {{block 'main'}}
 
 <div class="atlas-container">
-    <div class="atlas-ill">
-        {{if illustration}}
-        <div class="atlas-ill-container">
-            <div class="atlas-ill">
-                <img src="{{illustration}}" alt="ill">
-            </div>
-            <div class="atlas-ill ill-background">
-                <img src="{{illustration}}" alt="ill">
-            </div>
+    {{if illustration}}
+    <div class="atlas-ill-container">
+        <div class="atlas-ill">
+            <img src="{{illustration}}" alt="ill">
         </div>
-        {{/if}}
+        <div class="atlas-ill ill-background">
+            <img src="{{illustration}}" alt="ill">
+        </div>
     </div>
+    {{/if}}
     <div class="atlas-info">
         <div class="atlas-song-name" name="pvis">{{song}}</div>
         <div class="atlas-artist">by {{artist}}</div>
