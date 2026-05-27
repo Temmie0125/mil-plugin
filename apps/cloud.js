@@ -84,7 +84,7 @@ export class milcloud extends milPluginBase {
 
         // 检查是否已经在授权中
         if (bindingUsers.has(userId)) {
-            send.send_with_At(e, '⏳ 你已有一个授权流程在进行中，请先完成或等待超时~')
+            send.send_with_At(e, '你已有一个授权流程在进行中，请先完成或等待超时~')
             return true
         }
 
@@ -144,7 +144,7 @@ export class milcloud extends milPluginBase {
 
         // 检查是否已经在授权中
         if (bindingUsers.has(userId)) {
-            send.send_with_At(e, '⏳ 你已有一个授权流程在进行中，请先完成或等待超时~')
+            send.send_with_At(e, '你已有一个授权流程在进行中，请先完成或等待超时~')
             return true
         }
 
@@ -341,7 +341,7 @@ export class milcloud extends milPluginBase {
 
         // 防重复
         if (updatingUsers.has(userId)) {
-            send.send_with_At(e, '⏳ 你已有一个更新流程在进行中，请稍后~')
+            send.send_with_At(e, '你已有一个更新流程在进行中，请稍后~')
             return true
         }
 
@@ -382,6 +382,7 @@ export class milcloud extends milPluginBase {
             }
 
             // 3. 下载存档文件
+            send.send_with_At("正在更新，请稍等一下哦！>_<", false, { recallMsg: 5 })
             let fileBuffer = await auth.downloadSaveFile(saveData.fileUrl)
 
             // 4. 检测文件格式并导入
@@ -434,7 +435,7 @@ export class milcloud extends milPluginBase {
 
         // 防重复
         if (updatingUsers.has(userId)) {
-            send.send_with_At(e, '⏳ 你已有一个更新流程在进行中，请稍后~')
+            send.send_with_At(e, '你已有一个更新流程在进行中，请稍后~')
             return true
         }
 
@@ -467,6 +468,7 @@ export class milcloud extends milPluginBase {
             } else {
                 // 非 TTL 保护期：始终调用 API 获取最新数据，便于 diff 比对
                 try {
+                    send.send_with_At("正在更新，请稍等一下哦！>_<", false, { recallMsg: 5 })
                     queryResult = await nyaAuth.queryUserData(username)
                     NyaProfilerAuth.saveCache(userId, queryResult)
                 } catch (err) {
@@ -523,7 +525,7 @@ export class milcloud extends milPluginBase {
                 let remainingMin = Math.ceil(remainingSec / 60)
                 let ageMin = Math.floor(cacheAge / 60)
                 await send.send_with_At(e,
-                    `⏳ 数据已是最新（${ageMin} 分钟前更新）\n` +
+                    `数据已是最新（${ageMin} 分钟前更新）\n` +
                     `缓存有效期 ${ttlHours} 小时，请 ${remainingMin} 分钟后重试以获取最新数据\n` +
                     `（Nya Profiler 每日仅 5 次下载机会）\n` +
                     `以下为上次更新结果：`,
