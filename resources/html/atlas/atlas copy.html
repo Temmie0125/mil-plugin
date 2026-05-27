@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <link rel="shortcut icon" href="#" />
+    <link rel="stylesheet" type="text/css" href="./atlas.css" />
+    {{block 'css'}}{{/block}}
+    <title>mil-plugin</title>
+</head>
+<body class="elem-hydro default-mode atlas" {{@sys.scale}}>
+    <div class="background">
+        {{if background}}
+        <img src="../../origin_ill/ill/190 - MMQX.png" alt="bg">
+        {{/if}}
+    </div>
+    <script>var _res_path = "{{_res_path}}";</script>
+    <script src="../../html/common/theme/star/star.js"></script>
+<div class="atlas-container">
+    <div class="atlas-ill-container">
+        <div class="atlas-ill">
+            <img src="../../origin_ill/ill/190 - MMQX.png" alt="ill">
+        </div>
+        <div class="atlas-ill ill-background">
+            <img src="../../origin_ill/ill/190 - MMQX.png" alt="ill">
+        </div>
+    </div>
+    <div class="atlas-info">
+        <div class="atlas-song-name" name="pvis">190</div>
+        <div class="atlas-artist">by MMQX</div>
+        <div class="atlas-chapter">咕咕章节</div>
+        <div class="atlas-chapter">Illust: 咕咕画师</div>
+
+
+        <div class="atlas-charts">
+            <div class="atlas-chart-row">
+                <div class="chart-dif">
+                    <span class="dif-badge dif-{{chart.level}}">CL</span>
+                    <span class="chart-dif-value">99.0</span>
+                </div>
+                <div class="chart-mid">
+                    <div class="chart-charter">ggu</div>
+                    <div class="chart-bpm-length">BPM: 88&ensp;|&ensp;888:88</div>
+                    <div class="chart-notes">
+                        Tap: 88&ensp; Hold: 88&ensp; Drag: 88&ensp; Ex: 88
+                    </div>
+                </div>
+                <div class="chart-combo">
+                    <span class="combo-num">888</span>
+                    <span class="combo-label">notes</span>
+                </div>
+            </div>
+            <div class="atlas-chart-row">
+                <div class="chart-dif">
+                    <span class="dif-badge dif-{{chart.level}}">CL</span>
+                    <span class="chart-dif-value">99.0</span>
+                </div>
+                <div class="chart-mid">
+                    <div class="chart-charter">ggu</div>
+                    <div class="chart-bpm-length">BPM: 88&ensp;|&ensp;888:88</div>
+                    <div class="chart-notes">
+                        Tap: 88&ensp; Hold: 88&ensp; Drag: 88&ensp; Ex: 88
+                    </div>
+                </div>
+                <div class="chart-combo">
+                    <span class="combo-num">888</span>
+                    <span class="combo-label">notes</span>
+                </div>
+            </div>
+            <div class="atlas-chart-row">
+                <div class="chart-dif">
+                    <span class="dif-badge dif-{{chart.level}}">CL</span>
+                    <span class="chart-dif-value">99.0</span>
+                </div>
+                <div class="chart-mid">
+                    <div class="chart-charter">ggu</div>
+                    <div class="chart-bpm-length">BPM: 88&ensp;|&ensp;888:88</div>
+                    <div class="chart-notes">
+                        Tap: 88&ensp; Hold: 88&ensp; Drag: 88&ensp; Ex: 88
+                    </div>
+                </div>
+                <div class="chart-combo">
+                    <span class="combo-num">888</span>
+                    <span class="combo-label">notes</span>
+                </div>
+            </div>
+            <div class="atlas-chart-row">
+                <div class="chart-dif">
+                    <span class="dif-badge dif-{{chart.level}}">CL</span>
+                    <span class="chart-dif-value">99.0</span>
+                </div>
+                <div class="chart-mid">
+                    <div class="chart-charter">ggu</div>
+                    <div class="chart-bpm-length">BPM: 88&ensp;|&ensp;888:88</div>
+                    <div class="chart-notes">
+                        Tap: 88&ensp; Hold: 88&ensp; Drag: 88&ensp; Ex: 88
+                    </div>
+                </div>
+                <div class="chart-combo">
+                    <span class="combo-num">888</span>
+                    <span class="combo-label">notes</span>
+                </div>
+            </div>
+            <div class="atlas-chart-row">
+                <div class="chart-dif">
+                    <span class="dif-badge dif-{{chart.level}}">CL</span>
+                    <span class="chart-dif-value">99.0</span>
+                </div>
+                <div class="chart-mid">
+                    <div class="chart-charter">ggu</div>
+                    <div class="chart-bpm-length">BPM: 88&ensp;|&ensp;888:88</div>
+                    <div class="chart-notes">
+                        Tap: 88&ensp; Hold: 88&ensp; Drag: 88&ensp; Ex: 88
+                    </div>
+                </div>
+                <div class="chart-combo">
+                    <span class="combo-num">888</span>
+                    <span class="combo-label">notes</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="createdbox">
+    <div class="mil-plugin">
+        <p>mil-plugin</p>
+    </div>
+    <div class="ver">
+        <p>{{version}}</p>
+    </div>
+</div>
+
+</body>
+<script>
+        function isBiggerThanParent(el, parent) {
+            return el.scrollWidth > parent.offsetWidth || el.scrollHeight > parent.offsetHeight;
+        }
+        function adjustFontSize() {
+            let a = document.getElementsByName('pvis');
+            for (let i = 0; i < a.length; ++i) {
+                let el = a[i];
+                if (!el) continue;
+                let parent = el.parentElement;
+                if (!isBiggerThanParent(el, parent)) continue;
+                let fontSize = Number(window.getComputedStyle(el, null).getPropertyValue('font-size').replace("px", ""));
+                let l = 0, r = fontSize;
+                while (l < r) {
+                    let mid = Math.floor((l + r + 1) / 2);
+                    el.style.fontSize = mid + "px";
+                    if (isBiggerThanParent(el, parent)) r = mid - 1;
+                    else l = mid;
+                }
+                el.style.fontSize = l + "px";
+            }
+        }
+        window.onload = adjustFontSize;
+        window.onresize = adjustFontSize;
+    </script>

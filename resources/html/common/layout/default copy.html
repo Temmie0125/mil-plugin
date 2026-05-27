@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <link rel="shortcut icon" href="#" />
+    <link rel="stylesheet" type="text/css" href="{{_res_path}}html/common/common.css" />
+    {{block 'css'}}{{/block}}
+    <title>mil-plugin</title>
+</head>
+<body class="elem-hydro default-mode {{bodyClass}}" {{@sys.scale}}>
+    <div class="background">
+        {{if background}}
+        <img src="{{background}}" alt="bg">
+        {{/if}}
+    </div>
+    <script>var _res_path = "{{_res_path}}";</script>
+    <script src="{{_res_path}}html/common/theme/star/star.js"></script>
+    {{block 'main'}}{{/block}}
+    <script>
+        function isBiggerThanParent(el, parent) {
+            return el.scrollWidth > parent.offsetWidth || el.scrollHeight > parent.offsetHeight;
+        }
+        function adjustFontSize() {
+            let a = document.getElementsByName('pvis');
+            for (let i = 0; i < a.length; ++i) {
+                let el = a[i];
+                if (!el) continue;
+                let parent = el.parentElement;
+                if (!isBiggerThanParent(el, parent)) continue;
+                let fontSize = Number(window.getComputedStyle(el, null).getPropertyValue('font-size').replace("px", ""));
+                let l = 0, r = fontSize;
+                while (l < r) {
+                    let mid = Math.floor((l + r + 1) / 2);
+                    el.style.fontSize = mid + "px";
+                    if (isBiggerThanParent(el, parent)) r = mid - 1;
+                    else l = mid;
+                }
+                el.style.fontSize = l + "px";
+            }
+        }
+        window.onload = adjustFontSize;
+        window.onresize = adjustFontSize;
+    </script>
+</body>
+</html>

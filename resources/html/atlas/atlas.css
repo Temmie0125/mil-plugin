@@ -1,4 +1,30 @@
-.atlas-container { margin-top: 20px; }
+@import "../common/common.css";
+
+.atlas-container {
+    margin-top: 20px; 
+    align-items: center;
+}
+
+.atlas-ill {
+     transform: rotate(-10deg);
+    margin: 40px;
+    grid-area: 1 / 1 ;
+    z-index: 2;
+}
+
+.ill-background {
+    transform: rotate(5deg);
+    margin: 40px;
+    z-index: 1;
+    filter: opacity(0.5) blur(2px) brightness(1.2);
+}
+
+.atlas-ill-container {
+    width: 545px;
+    height: auto;
+    display: grid;
+}
+
 .createdbox {
     width: 100%;
     display: flex;

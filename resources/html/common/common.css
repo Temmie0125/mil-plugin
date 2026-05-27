@@ -218,8 +218,8 @@ body {
 }
 
 .atlas-ill {
-    width: 380px;
-    height: 380px;
+    /* width: 380px; */
+    height: auto;
     border-radius: 20px;
     overflow: hidden;
     flex-shrink: 0;
@@ -237,6 +237,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    width: 545px;
 }
 
 .atlas-song-name {
