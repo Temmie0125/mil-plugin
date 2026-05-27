@@ -135,7 +135,7 @@ data/
 > [!WARNING]
 > 云存档功能需要自行配置以下任一内容：
 > - [Re Nya Profiler API](https://renya.mhtl.im/apikey)的API Key
-> - Milkloud的Cilent_id和Cilent_secret，可自行前往申请获取，此处不提供获取方式
+> - Milkloud OIDC的Cilent_id和Cilent_secret，可自行前往申请获取，此处不提供获取方式. 注意，如果你一定需要这一项配置，请务必申请**Cilent Auth**的认证类型，**无需回调地址**，Bot会自动轮询。
 
 
 配置完上述内容之后，使用`/mil bind`，bot会发送一个授权链接，在有效期内完成授权即可。
