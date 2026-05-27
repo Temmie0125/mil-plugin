@@ -382,7 +382,7 @@ export class milcloud extends milPluginBase {
             }
 
             // 3. 下载存档文件
-            send.send_with_At("正在更新，请稍等一下哦！>_<", false, { recallMsg: 5 })
+            send.send_with_At(e, "正在更新，请稍等一下哦！>_<", false, { recallMsg: 5 })
             let fileBuffer = await auth.downloadSaveFile(saveData.fileUrl)
 
             // 4. 检测文件格式并导入
@@ -468,7 +468,7 @@ export class milcloud extends milPluginBase {
             } else {
                 // 非 TTL 保护期：始终调用 API 获取最新数据，便于 diff 比对
                 try {
-                    send.send_with_At("正在更新，请稍等一下哦！>_<", false, { recallMsg: 5 })
+                    send.send_with_At(e, "正在更新，请稍等一下哦！>_<", false, { recallMsg: 5 })
                     queryResult = await nyaAuth.queryUserData(username)
                     NyaProfilerAuth.saveCache(userId, queryResult)
                 } catch (err) {
