@@ -152,8 +152,8 @@ export function supportGuoba() {
                 },
                 {
                     field: 'maxUpdateEntries',
-                    label: '更新记录保留条数',
-                    bottomHelpMessage: '存档更新历史最多保留条数（10~99），超出自动删除最早记录',
+                    label: '更新记录条数',
+                    bottomHelpMessage: '存档更新历史最多显示的曲目条数（10~99），超出的将不显示在图片中',
                     component: 'InputNumber',
                     required: true,
                     componentProps: {

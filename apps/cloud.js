@@ -671,6 +671,10 @@ async function renderUpdateImage(userId, entry) {
     let realityHistory = updateLog.getRealityHistory()
     let curve = buildRksHistory(realityHistory)
 
+    // 界面展示仅限最近 maxUpdateEntries 条记录，但 Reality 曲线使用完整数据
+    let maxEntries = updateLog.getMaxEntries()
+    let displayHistory = updateLog.history.slice(0, maxEntries)
+
     // 构建星星字符串
     let starStr = ''
     for (let i = 0; i < (entry.starLevel || 0); i++) {
@@ -686,16 +690,16 @@ async function renderUpdateImage(userId, entry) {
         '#82ffed', '#ff82b4', '#b4ff82', '#82b4ff', '#e482ff', '#ffd582'
     ]
     let dateColorMap = new Map()
-    for (let h of updateLog.history) {
+    for (let h of displayHistory) {
         if ((h.changes || []).length === 0) continue
         if (!dateColorMap.has(h.date)) {
             dateColorMap.set(h.date, DATE_COLORS[dateColorMap.size % DATE_COLORS.length])
         }
     }
 
-    // 构建 box_line：打平全部卡片 → 5 张/行切分 → 同日期分组（允许跨行）
+    // 构建 box_line：打平最多 maxUpdateEntries 条记录的卡片 → 5 张/行切分 → 同日期分组
     let allCards = []
-    for (let h of updateLog.history) {
+    for (let h of displayHistory) {
         let cards = (h.changes || []).slice(0, 6)
         if (cards.length === 0) continue
         let total = h.totalChanges || h._allChangesCount || 0

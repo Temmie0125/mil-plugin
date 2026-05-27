@@ -7,7 +7,9 @@
  * - 首次导入时取新存档中 Reality 最高的 6 首作为展示
  * - 记录每次更新时的 Reality 值用于绘制折线图（不管是否变化）
  * - 存储为 user_id.json 在 data/updates/ 目录下
- * - 通过 Guoba 配置项 maxUpdateEntries 控制最多保留的记录条数（10~99）
+ * - 更新记录永久保留在磁盘文件中
+ * - Guoba 配置项 maxUpdateEntries（10~99）仅控制 update 界面展示的最近记录条数
+ * - Reality 变动曲线始终使用完整历史数据绘制，不受展示限制影响
  */
 import fs from 'fs'
 import getInfo from './getInfo.js'
@@ -80,10 +82,7 @@ export default class UpdateLog {
     save() {
         UpdateLog.ensureDir()
         try {
-            let max = this.getMaxEntries()
-            if (this.history.length > max) {
-                this.history = this.history.slice(0, max)
-            }
+            // 更新记录永久保留，不再按 maxUpdateEntries 截断
             fs.writeFileSync(this.logPath, JSON.stringify({
                 history: this.history,
                 updatedAt: new Date().toISOString()
