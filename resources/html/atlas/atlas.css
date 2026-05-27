@@ -6,7 +6,7 @@
 }
 
 .atlas-ill {
-     transform: rotate(-10deg);
+    transform: rotate(-10deg);
     margin: 40px;
     grid-area: 1 / 1 ;
     z-index: 2;
@@ -20,7 +20,7 @@
 }
 
 .atlas-ill-container {
-    width: 545px;
+    width: 520px;
     height: auto;
     display: grid;
 }
