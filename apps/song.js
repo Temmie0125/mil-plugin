@@ -151,7 +151,11 @@ export class milsong extends milPluginBase {
     async tips(e) {
         let tips = getInfo.tips
         if (tips && tips.length > 0) {
-            send.send_with_At(e, tips[fCompute.randBetween(0, tips.length - 1)].replace(/(\r\n|\n|\r)/gm, ""))
+            let tip = tips[fCompute.randBetween(0, tips.length - 1)].replace(/(\r\n|\n|\r)/gm, "")
+            // 获取发送者昵称
+            let nickname = e.sender?.nickname || e.member?.nick || e.user_id || "你"
+            tip = tip.replace(/\{Name\}/g, nickname)
+            send.send_with_At(e, tip)
         } else {
             send.send_with_At(e, '暂无tips~')
         }
