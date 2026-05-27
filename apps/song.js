@@ -132,7 +132,7 @@ export class milsong extends milPluginBase {
             }
         }
         if (parts[0] && parts[1]) {
-            let P0Ids = getInfo.fuzzysongsnick(parts[0].trim(), 1)
+            let P0Ids = getInfo.fuzzysongsnick(parts[0].trim())
             if (P0Ids[0]) {
                 await getInfo.setnick(P0Ids[0], parts[1].trim())
                 e.reply(`设置完成！已将 "${parts[1].trim()}" 设为 "${getInfo.idgetsong(P0Ids[0])}" 的别名`)

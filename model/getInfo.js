@@ -276,87 +276,128 @@ class GetInfo {
     }
 
     /**
-     * 模糊搜索歌曲
+     * 模糊搜索歌曲（基于 Jaro-Winkler 相关度排序）
      * @param {string} query - 搜索词
+     * @param {number} [threshold=0.85] - JaroWinkler 相似度阈值（0~1）
      * @param {number} [limit] - 限制结果数量
-     * @param {boolean} [returnIdsOnly] - 是否只返回ID列表
      * @returns {string[]}
      */
-    fuzzysongsnick(query, limit = undefined, returnIdsOnly = false) {
+    fuzzysongsnick(query, threshold = 0.85, limit = undefined) {
         if (!query || !query.trim()) return []
 
         query = query.trim().toLowerCase()
-        let results = []
 
-        // 1. 精确匹配别名
+        // 1. 别名精确匹配——若仅匹配到唯一结果则直接返回
         if (this.nicklist[query]) {
-            results = [...this.nicklist[query]]
+            let exactMatches = [...this.nicklist[query]]
+            if (exactMatches.length === 1) {
+                return exactMatches
+            }
+            // 多个精确匹配，记录下来后续参与排序（得分=1.0）
         }
 
-        // 2. 别名包含搜索
+        // 2. 相关度匹配（JaroWinkler）
+        /** @type {Map<string, number>} id -> best score */
+        let scoredResults = new Map()
+
+        const addResult = (id, score) => {
+            if (!scoredResults.has(id) || scoredResults.get(id) < score) {
+                scoredResults.set(id, score)
+            }
+        }
+
+        // 2a. 别名匹配
         for (let nick of Object.keys(this.nicklist)) {
-            if (nick.toLowerCase().includes(query)) {
+            let dis = fCompute.jaroWinklerDistance(query, nick)
+            if (dis >= threshold) {
                 for (let id of this.nicklist[nick]) {
-                    if (!results.includes(id)) {
-                        results.push(id)
-                    }
+                    addResult(id, dis)
                 }
             }
         }
 
-        // 3. 歌曲ID/key包含搜索
+        // 2b. 歌曲 ID/key 匹配
         for (let id of this.idList) {
-            if (id.toLowerCase().includes(query)) {
-                if (!results.includes(id)) results.push(id)
+            let dis = fCompute.jaroWinklerDistance(query, id.toLowerCase())
+            if (dis >= threshold) {
+                addResult(id, dis)
             }
         }
 
-        // 4. 拉丁标题包含搜索
-        for (let id of this.idList) {
-            let info = this.ori_info[id]
-            if (info && info.latinTitle && info.latinTitle.toLowerCase().includes(query)) {
-                if (!results.includes(id)) results.push(id)
-            }
-        }
-
-        // 5. 中文标题包含搜索
+        // 2c. 拉丁标题匹配
         for (let id of this.idList) {
             let info = this.ori_info[id]
-            if (info && info.Title_zh_Hans && info.Title_zh_Hans.toLowerCase().includes(query)) {
-                if (!results.includes(id)) results.push(id)
+            if (info && info.latinTitle) {
+                let dis = fCompute.jaroWinklerDistance(query, info.latinTitle.toLowerCase())
+                if (dis >= threshold) {
+                    addResult(id, dis)
+                }
             }
         }
 
-        // 6. 曲师包含搜索
+        // 2d. 中文标题匹配
         for (let id of this.idList) {
             let info = this.ori_info[id]
-            if (info && info.artist && info.artist.toLowerCase().includes(query)) {
-                if (!results.includes(id)) results.push(id)
+            if (info && info.Title_zh_Hans) {
+                let dis = fCompute.jaroWinklerDistance(query, info.Title_zh_Hans.toLowerCase())
+                if (dis >= threshold) {
+                    addResult(id, dis)
+                }
             }
         }
 
-        // 7. chart_id搜索（直接搜索谱面ID）
+        // 2e. 曲师匹配
+        for (let id of this.idList) {
+            let info = this.ori_info[id]
+            if (info && info.artist) {
+                let dis = fCompute.jaroWinklerDistance(query, info.artist.toLowerCase())
+                if (dis >= threshold) {
+                    addResult(id, dis)
+                }
+            }
+        }
+
+        // 3. 精确别名匹配兜底（得分=1.0，最高优先级）
+        if (this.nicklist[query]) {
+            for (let id of this.nicklist[query]) {
+                addResult(id, 1.0)
+            }
+        }
+
+        // 4. chart_id 搜索（精确匹配或部分匹配，仅当query较长时）
         if (query.length >= 8) {
             let songKey = this.chartIdToSongKey(query)
-            if (songKey && !results.includes(songKey)) {
-                results.unshift(songKey)
+            if (songKey) {
+                addResult(songKey, 1.0)
             }
-            // 部分匹配chart_id
             for (let chartId of Object.keys(this.chartid_map)) {
                 if (chartId.includes(query)) {
                     let key = this.chartid_map[chartId]
-                    if (key && !results.includes(key)) {
-                        results.push(key)
+                    if (key) {
+                        addResult(key, 0.95)
                     }
                 }
             }
         }
 
-        if (limit && results.length > limit) {
-            results = results.slice(0, limit)
+        if (scoredResults.size === 0) return []
+
+        // 5. 按相关度降序排列
+        let sorted = [...scoredResults.entries()]
+            .sort((a, b) => b[1] - a[1])
+
+        // 6. 如果最高分是精确匹配（1.0），仅保留精确匹配的结果
+        if (sorted[0][1] >= 1.0) {
+            sorted = sorted.filter(([, score]) => score >= 1.0)
         }
 
-        return results
+        // 7. 提取ID列表并应用数量限制
+        let result = sorted.map(([id]) => id)
+        if (limit && result.length > limit) {
+            result = result.slice(0, limit)
+        }
+
+        return result
     }
 
     /**

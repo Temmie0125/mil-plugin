@@ -159,5 +159,69 @@ export default {
         let maxBpm = Math.max(...bpmValues)
         if (minBpm === maxBpm) return `${minBpm}`
         return `${minBpm}~${maxBpm}`
+    },
+
+    /**
+     * Jaro-Winkler 字符串相似度算法
+     * 返回 0.0 ~ 1.0 之间的相似度分数
+     * @param {string} a
+     * @param {string} b
+     * @returns {number}
+     */
+    jaroWinklerDistance(a, b) {
+        let s1 = a.toLowerCase()
+        let s2 = b.toLowerCase()
+        if (s1 === s2) return 1.0
+
+        let len1 = s1.length
+        let len2 = s2.length
+        if (len1 === 0 || len2 === 0) return 0.0
+
+        // 匹配窗口大小
+        let matchDistance = Math.floor(Math.max(len1, len2) / 2) - 1
+        if (matchDistance < 0) matchDistance = 0
+
+        let matches1 = new Array(len1).fill(false)
+        let matches2 = new Array(len2).fill(false)
+        let matches = 0
+
+        for (let i = 0; i < len1; i++) {
+            let start = Math.max(0, i - matchDistance)
+            let end = Math.min(i + matchDistance + 1, len2)
+            for (let j = start; j < end; j++) {
+                if (matches2[j]) continue
+                if (s1[i] !== s2[j]) continue
+                matches1[i] = true
+                matches2[j] = true
+                matches++
+                break
+            }
+        }
+
+        if (matches === 0) return 0.0
+
+        // 计算换位次数
+        let transpositions = 0
+        let k = 0
+        for (let i = 0; i < len1; i++) {
+            if (!matches1[i]) continue
+            while (!matches2[k]) k++
+            if (s1[i] !== s2[k]) transpositions++
+            k++
+        }
+
+        // Jaro 距离
+        let jaro = (matches / len1 + matches / len2 + (matches - transpositions / 2) / matches) / 3
+
+        // Winkler 修正：前缀匹配加权
+        let prefix = 0
+        let maxPrefix = 4
+        for (let i = 0; i < Math.min(maxPrefix, len1, len2); i++) {
+            if (s1[i] === s2[i]) prefix++
+            else break
+        }
+
+        const p = 0.1 // 标准Winkler缩放因子
+        return jaro + prefix * p * (1 - jaro)
     }
 }
