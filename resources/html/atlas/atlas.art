@@ -9,7 +9,14 @@
 <div class="atlas-container">
     <div class="atlas-ill">
         {{if illustration}}
-        <img src="{{illustration}}" alt="ill">
+        <div class="atlas-ill-container">
+            <div class="atlas-ill">
+                <img src="{{illustration}}" alt="ill">
+            </div>
+            <div class="atlas-ill ill-background">
+                <img src="{{illustration}}" alt="ill">
+            </div>
+        </div>
         {{/if}}
     </div>
     <div class="atlas-info">
