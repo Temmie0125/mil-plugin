@@ -3,6 +3,7 @@ import send from '../model/send.js'
 import getInfo from '../model/getInfo.js'
 import fCompute from '../model/fCompute.js'
 import { calcReality, realityv2, realityv3, parseGameVersion } from '../model/reality.js'
+import { calcPushSuggestion } from '../model/pushSuggestion.js'
 import { getFileInfo, getFileContent } from '../components/common.js'
 import getSave from '../model/getSave.js'
 import SaveManager from '../model/SaveManager.js'
@@ -489,10 +490,26 @@ export class miluser extends milPluginBase {
                 if (gv < 4.0) allV3 = false
             }
 
+            // --- 推分建议计算 ---
+            let pushDisplay = null
+            try {
+                let pushSuggestion = calcPushSuggestion({
+                    currentReality: reality,
+                    b20Scores: scores,
+                    targetChartId: record.chart_id,
+                    chartDifficulty: difficulty,
+                    chartBestScore: record._displayScore != null ? record._displayScore : record.score,
+                    chartBestReality: singleRlt
+                })
+                if (pushSuggestion) {
+                    pushDisplay = pushSuggestion.achievable ? pushSuggestion.targetScore : '无法推分'
+                }
+            } catch (err) {
+                logger.error(`[mil-plugin][推分建议] 计算失败:`, err)
+            }
             // 显示分取最高分（可能不同于计算 Reality 的版本），匹配游戏内行为
             let displayScore = record._displayScore != null ? record._displayScore : record.score
             let displayAcc = record._displayAccuracy != null ? record._displayAccuracy : (record.score_accuracy || 0)
-
             scoreData.push({
                 song: songName,
                 artist: songArtist,
@@ -511,7 +528,8 @@ export class miluser extends milPluginBase {
                 good: record.score_good_count || 0,
                 bad: record.score_bad_count || 0,
                 miss: record.score_miss_count || 0,
-                isOverflow: i >= bestNum
+                isOverflow: i >= bestNum,
+                pushDisplay    // 传入的推分建议文本，为分数值或者“无法推分”
             })
         }
 
@@ -744,7 +762,7 @@ async function renderScore(save, songKey) {
     if (!info) return `未找到${songKey}的曲目信息QAQ！`
 
     let player = save.getPlayerInfo()
-    let { reality } = save.getB20WithReality(20, getInfo)
+    let { scores: b20Scores, reality } = save.getB20WithReality(22, getInfo)
 
     let scoreData = []
     for (let level of fCompute.Level) {
@@ -752,6 +770,31 @@ async function renderScore(save, songKey) {
         if (!chart || !chart.chartid) continue
 
         let record = save.getChartScore(chart.chartid)
+
+        // --- 推分建议计算 ---
+        let pushDisplay = null
+        try {
+            let chartBestRlt = 0
+            let chartBestScore = 0
+            if (record) {
+                chartBestRlt = calcReality(record.score, chart.difficulty, parseGameVersion(record.game_version), record.score_accuracy)
+                chartBestScore = record.score
+            }
+            let pushSuggestion = calcPushSuggestion({
+                currentReality: reality,
+                b20Scores,
+                targetChartId: chart.chartid,
+                chartDifficulty: chart.difficulty,
+                chartBestScore,
+                chartBestReality: chartBestRlt
+            })
+            if (pushSuggestion) {
+                pushDisplay = pushSuggestion.achievable ? pushSuggestion.targetScore : '无法推分'
+                logger.info(`[mil-plugin][推分建议] ${info.song} [${fCompute.LevelAbbr[level]}] 推分建议: ${pushDisplay}`)
+            }
+        } catch (err) {
+            logger.error(`[mil-plugin][推分建议] 计算失败:`, err)
+        }
 
         if (record) {
             let gradeInfo = getGradeForRecord(record, chart)
@@ -776,7 +819,8 @@ async function renderScore(save, songKey) {
                 miss: showJudges ? (record.score_miss_count || 0) : 0,
                 showJudges,
                 notPlayed: false,
-                played_at: record.played_at ? fCompute.formatDate(record.played_at) : ''
+                played_at: record.played_at ? fCompute.formatDate(record.played_at) : '',
+                pushDisplay
             })
         } else {
             // 未游玩该难度
@@ -791,7 +835,8 @@ async function renderScore(save, songKey) {
                 grade: '',
                 gradeIcon: '',
                 notPlayed: true,
-                showJudges: false
+                showJudges: false,
+                pushDisplay
             })
         }
     }
