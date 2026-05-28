@@ -48,6 +48,22 @@ class GetInfo {
     }
 
     /**
+     * 获取头像文件名列表
+     */
+    getAvatar() {
+        let avatarPath = `${Plugin_Path}/resources/avatar/`;
+        try {
+            const files = fs.readdirSync(avatarPath);
+            // 过滤出 .png 结尾的文件（不区分大小写）
+            const pngFiles = files.filter(file => path.extname(file).toLowerCase() === '.png');
+            return pngFiles;
+        } catch (error) {
+            logger.error(`读取头像目录失败: ${error}`);
+            return []; // 出错时返回空数组
+        }
+    }
+
+    /**
      * 加载 info.json
      */
     async loadInfo() {

@@ -20,7 +20,7 @@ import http from 'http'
 /**@import {botEvent} from '../components/baseClass.js' */
 
 // 随机头像列表
-const avatarList = ['avatar.png', 'avatar_honoka.png', 'avatar_luvia.png', 'avatar_susan.png']
+const avatarList = getInfo.getAvatar();
 
 function randomAvatar() {
     return avatarList[fCompute.randBetween(0, avatarList.length - 1)]

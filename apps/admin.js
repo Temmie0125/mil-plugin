@@ -167,7 +167,7 @@ export class miladmin extends milPluginBase {
     _getIllUrl() {
         let url = String(Config.getUserCfg('config', 'illDownloadUrl') || '').trim()
         if (!url) {
-            url = 'https://github.com/Temmie0125/mil-plugin-ill'
+            url = 'https://github.com/Temmie0125/mil-plugin-ill-low'
         }
 
         let proxy = Config.getUserCfg('config', 'githubProxy')
@@ -318,7 +318,7 @@ export class miladmin extends milPluginBase {
         if (log.length > 0) {
             log.reverse()
             log.unshift(`mil-plugin 更新日志，共 ${log.length} 条：`)
-            log.push(`更多详细信息，请前往github查看\nhttps://github.com/Temmie0125/mil-plugin-ill`)
+            log.push(`更多详细信息，请前往github查看\nhttps://github.com/Temmie0125/mil-plugin`)
             send.send_with_At(this.e, log.join('\n'))
         }
         return ifRestart
