@@ -11,7 +11,7 @@
             <div style="font-size:22px;font-weight:bold;margin-bottom:4px;" name="pvis">{{songName}}</div>
             <div style="opacity:0.6;">by {{artist}}</div>
             {{if chapter_zh}}
-            <div style="opacity:0.4;font-size:13px;">{{chapter_zh}}</div>
+            <div style="opacity:0.4;font-size:13px;margin-top:4px;">{{chapter_zh}}</div>
             {{/if}}
         </div>
     <div class="player-bar">
