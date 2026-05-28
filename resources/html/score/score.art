@@ -82,6 +82,7 @@
             <div class="score-judge">
                 <span>Exact: {{data.exact}}</span>
                 <span>Perfect: {{data.perfect}}</span>
+                <span>Great: {{data.great}}</span>
                 <span>Good: {{data.good}}</span>
                 <span>Bad: {{data.bad}}</span>
                 <span>Miss: {{data.miss}}</span>

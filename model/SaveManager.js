@@ -39,6 +39,12 @@ export default class SaveManager {
         this.nyaChartProgress = null
         /** @type {number|null} Nya Profiler starCount（星级） */
         this.nyaStarCount = null
+        /** @type {number|null} 云端 Rank 接口返回的 Reality（用于与本地计算结果比对） */
+        this.cloudRankReality = null
+        /** @type {object|null} 云端 Recent 接口返回的最近一条游玩记录（预适配 recent 功能） */
+        this.cloudRecentPlay = null
+        /** @type {string|null} Milthm 云用户名（用于 Rank/Recent 接口，获取后持久化缓存） */
+        this.cloudUsername = null
     }
 
     /**
@@ -374,6 +380,9 @@ export default class SaveManager {
             scores: this.scores,
             nyaChartProgress: this.nyaChartProgress || null,
             nyaStarCount: this.nyaStarCount ?? null,
+            cloudRankReality: this.cloudRankReality,
+            cloudRecentPlay: this.cloudRecentPlay,
+            cloudUsername: this.cloudUsername,
             updatedAt: new Date().toISOString()
         }
         fs.writeFileSync(this.cachePath, JSON.stringify(cacheData, null, '\t'))
@@ -393,6 +402,9 @@ export default class SaveManager {
                 this.saveType = data.saveType || 'unknown'
                 this.nyaChartProgress = data.nyaChartProgress || null
                 this.nyaStarCount = data.nyaStarCount ?? null
+                this.cloudRankReality = data.cloudRankReality ?? null
+                this.cloudRecentPlay = data.cloudRecentPlay || null
+                this.cloudUsername = data.cloudUsername || null
                 return true
             } catch (e) {
                 return false
@@ -488,7 +500,6 @@ export default class SaveManager {
         this.ensureLoaded()
 
         // 1. 为每条成绩计算 Reality
-        //    Nya Profiler 数据直接使用 API 返回的 singleRating（本地 info.json 定数可能不同）
         let scored = this.scores.map(record => {
             let singleRlt, difficulty
             if (record._nyaSingleRating != null) {
@@ -732,6 +743,252 @@ export default class SaveManager {
     }
 
     /**
+     * 从云端 Rank 接口导入 B20 详细游玩表现
+     * 将云端返回的详细判定数据（exact/perfect/great/good/bad/miss 计数、
+     * modifiers、played_at 等）合并到现有成绩中，补充 saves.db 格式缺失的细节。
+     * 同时记录云端返回的 Reality 用于比对本地计算值。
+     * @param {any[]} touchRanks - rank API 返回的 touch_ranks 数组
+     * @param {number} cloudReality - 云端 total Reality
+     * @returns {{mergedCount: number, enrichedCount: number}}
+     */
+    importFromCloudRank(touchRanks, cloudReality) {
+        this.cloudRankReality = cloudReality
+
+        // 构建现有 scores 的 chart_id → index 映射
+        let scoreIndex = {}
+        for (let i = 0; i < this.scores.length; i++) {
+            let cid = this.scores[i].chart_id
+            // 每个 chart_id 保留最高分的那条索引
+            if (!(cid in scoreIndex) || this.scores[i].score > this.scores[scoreIndex[cid]].score) {
+                scoreIndex[cid] = i
+            }
+        }
+
+        let enrichedCount = 0
+        let mergedCount = 0
+
+        for (let rankEntry of touchRanks) {
+            // 只处理 TouchMode 标记的记录（过滤掉纯 keyboard 数据）
+            let modifiers = rankEntry.modifiers || []
+            let isTouch = modifiers.some(m => m.toLowerCase().includes('touch'))
+
+            let cid = rankEntry.chart_id
+            if (cid in scoreIndex) {
+                let idx = scoreIndex[cid]
+                let existing = this.scores[idx]
+
+                // 合并详细判定数据（云端数据覆盖本地缺失的详情）
+                existing.score_exact_count = rankEntry.score_exact_count ?? existing.score_exact_count ?? 0
+                existing.score_perfect_count = rankEntry.score_perfect_count ?? existing.score_perfect_count ?? 0
+                existing.score_great_count = rankEntry.score_great_count ?? existing.score_great_count ?? 0
+                existing.score_good_count = rankEntry.score_good_count ?? existing.score_good_count ?? 0
+                existing.score_bad_count = rankEntry.score_bad_count ?? existing.score_bad_count ?? 0
+                existing.score_miss_count = rankEntry.score_miss_count ?? existing.score_miss_count ?? 0
+                existing.score_fracture_exact_count = rankEntry.score_fracture_exact_count ?? existing.score_fracture_exact_count ?? 0
+                existing.score_fracture_miss_count = rankEntry.score_fracture_miss_count ?? existing.score_fracture_miss_count ?? 0
+
+                // 使用云端更精确的 accuracy
+                if (rankEntry.score_accuracy != null) {
+                    existing.score_accuracy = rankEntry.score_accuracy
+                }
+
+                // 补充游玩时间和 Mod 信息
+                if (rankEntry.played_at && !existing.played_at) {
+                    existing.played_at = rankEntry.played_at
+                }
+                if (modifiers.length > 0) {
+                    existing._modifiers = modifiers
+                }
+
+                // 云端返回的 Reality 值
+                if (rankEntry.reality != null) {
+                    existing._cloudReality = rankEntry.reality
+                }
+
+                // 标记为已增强
+                if (!existing._cloudEnriched) {
+                    existing._cloudEnriched = true
+                    enrichedCount++
+                }
+
+                this.scores[idx] = existing
+            } else if (isTouch) {
+                // 云端有但本地没有的新记录（可能因为存档格式不同步）
+                let newRecord = {
+                    chart_id: cid,
+                    score: rankEntry.score,
+                    score_accuracy: rankEntry.score_accuracy || 0,
+                    score_exact_count: rankEntry.score_exact_count || 0,
+                    score_perfect_count: rankEntry.score_perfect_count || 0,
+                    score_great_count: rankEntry.score_great_count || 0,
+                    score_good_count: rankEntry.score_good_count || 0,
+                    score_bad_count: rankEntry.score_bad_count || 0,
+                    score_miss_count: rankEntry.score_miss_count || 0,
+                    score_fracture_exact_count: rankEntry.score_fracture_exact_count || 0,
+                    score_fracture_miss_count: rankEntry.score_fracture_miss_count || 0,
+                    played_at: rankEntry.played_at || null,
+                    game_version: rankEntry.game_version || 'v5.0',
+                    grade: rankEntry.grade || '',
+                    _source: 'cloud_rank',
+                    _modifiers: modifiers,
+                    _cloudReality: rankEntry.reality || 0,
+                    _cloudEnriched: true
+                }
+                this.scores.push(newRecord)
+                mergedCount++
+            }
+        }
+
+        this.saveCache()
+        return { mergedCount, enrichedCount }
+    }
+
+    /**
+     * 从云端 Recent 接口导入最近游玩记录
+     * 将所有 TouchMode 记录合并到 scores 中（用于 Reality 比对和增量更新），
+     * 同时保留第一条（最新）记录到 cloudRecentPlay 供预适配 recent 功能。
+     * @param {any[]} recentRecords - recent API 返回的完整记录数组
+     * @returns {{mergedCount: number, enrichedCount: number}}
+     */
+    importFromCloudRecent(recentRecords) {
+        if (!recentRecords || recentRecords.length === 0) return { mergedCount: 0, enrichedCount: 0 }
+
+        // 构建现有 scores 的 chart_id → index 映射
+        let scoreIndex = {}
+        for (let i = 0; i < this.scores.length; i++) {
+            let cid = this.scores[i].chart_id
+            if (!(cid in scoreIndex) || this.scores[i].score > this.scores[scoreIndex[cid]].score) {
+                scoreIndex[cid] = i
+            }
+        }
+
+        let enrichedCount = 0
+        let mergedCount = 0
+        let firstTouchRecord = null
+
+        for (let record of recentRecords) {
+            let modifiers = record.modifiers || []
+            let isTouch = modifiers.some(m => m.toLowerCase().includes('touch'))
+            if (!isTouch) continue
+
+            let cid = record.chart_id
+
+            // 保留第一条 TouchMode 记录用于后续 recent 功能展示
+            if (!firstTouchRecord) {
+                firstTouchRecord = {
+                    chart_id: cid, score: record.score,
+                    score_accuracy: record.score_accuracy || 0,
+                    score_exact_count: record.score_exact_count || 0,
+                    score_perfect_count: record.score_perfect_count || 0,
+                    score_great_count: record.score_great_count || 0,
+                    score_good_count: record.score_good_count || 0,
+                    score_bad_count: record.score_bad_count || 0,
+                    score_miss_count: record.score_miss_count || 0,
+                    score_fracture_exact_count: record.score_fracture_exact_count || 0,
+                    score_fracture_miss_count: record.score_fracture_miss_count || 0,
+                    played_at: record.played_at || null,
+                    game_version: record.game_version || 'v5.0',
+                    grade: record.grade || '',
+                    modifiers: modifiers,
+                    reality: record.reality || 0
+                }
+            }
+
+            if (cid in scoreIndex) {
+                let idx = scoreIndex[cid]
+                let existing = this.scores[idx]
+                let cloudVer = record.game_version || 'v5.0'
+                let localGroup = this._versionGroup(existing.game_version)
+                let cloudGroup = this._versionGroup(cloudVer)
+
+                // 跨版本组：作为独立记录添加（保留旧版记录用于 max(v2,v3) 计算）
+                if (localGroup !== cloudGroup) {
+                    this.scores.push({
+                        chart_id: cid, score: record.score,
+                        score_accuracy: record.score_accuracy || 0,
+                        score_exact_count: record.score_exact_count || 0,
+                        score_perfect_count: record.score_perfect_count || 0,
+                        score_great_count: record.score_great_count || 0,
+                        score_good_count: record.score_good_count || 0,
+                        score_bad_count: record.score_bad_count || 0,
+                        score_miss_count: record.score_miss_count || 0,
+                        score_fracture_exact_count: record.score_fracture_exact_count || 0,
+                        score_fracture_miss_count: record.score_fracture_miss_count || 0,
+                        played_at: record.played_at || null,
+                        game_version: cloudVer,
+                        grade: record.grade || '',
+                        _source: 'cloud_recent',
+                        _modifiers: modifiers,
+                        _cloudReality: record.reality || 0,
+                        _cloudEnriched: true
+                    })
+                    mergedCount++
+                    continue
+                }
+
+                // 同版本组：只有分数更高时才更新
+                if (record.score > existing.score) {
+                    existing.score = record.score
+                    existing.score_accuracy = record.score_accuracy ?? existing.score_accuracy
+                    existing.score_exact_count = record.score_exact_count ?? existing.score_exact_count ?? 0
+                    existing.score_perfect_count = record.score_perfect_count ?? existing.score_perfect_count ?? 0
+                    existing.score_great_count = record.score_great_count ?? existing.score_great_count ?? 0
+                    existing.score_good_count = record.score_good_count ?? existing.score_good_count ?? 0
+                    existing.score_bad_count = record.score_bad_count ?? existing.score_bad_count ?? 0
+                    existing.score_miss_count = record.score_miss_count ?? existing.score_miss_count ?? 0
+                    existing.score_fracture_exact_count = record.score_fracture_exact_count ?? existing.score_fracture_exact_count ?? 0
+                    existing.score_fracture_miss_count = record.score_fracture_miss_count ?? existing.score_fracture_miss_count ?? 0
+                    if (record.played_at && !existing.played_at) existing.played_at = record.played_at
+                    if (modifiers.length > 0) existing._modifiers = modifiers
+                    if (record.reality != null) existing._cloudReality = record.reality
+                    if (!existing._cloudEnriched) { existing._cloudEnriched = true; enrichedCount++ }
+                    this.scores[idx] = existing
+                } else if (!existing._cloudEnriched) {
+                    // 分数未超过但缺少判定详情时补全
+                    existing.score_exact_count = record.score_exact_count ?? existing.score_exact_count ?? 0
+                    existing.score_perfect_count = record.score_perfect_count ?? existing.score_perfect_count ?? 0
+                    existing.score_great_count = record.score_great_count ?? existing.score_great_count ?? 0
+                    existing.score_good_count = record.score_good_count ?? existing.score_good_count ?? 0
+                    existing.score_bad_count = record.score_bad_count ?? existing.score_bad_count ?? 0
+                    existing.score_miss_count = record.score_miss_count ?? existing.score_miss_count ?? 0
+                    existing.score_fracture_exact_count = record.score_fracture_exact_count ?? existing.score_fracture_exact_count ?? 0
+                    existing.score_fracture_miss_count = record.score_fracture_miss_count ?? existing.score_fracture_miss_count ?? 0
+                    if (modifiers.length > 0) existing._modifiers = modifiers
+                    if (record.reality != null) existing._cloudReality = record.reality
+                    existing._cloudEnriched = true; enrichedCount++
+                    this.scores[idx] = existing
+                }
+            } else {
+                // 新谱面，直接添加
+                this.scores.push({
+                    chart_id: cid, score: record.score,
+                    score_accuracy: record.score_accuracy || 0,
+                    score_exact_count: record.score_exact_count || 0,
+                    score_perfect_count: record.score_perfect_count || 0,
+                    score_great_count: record.score_great_count || 0,
+                    score_good_count: record.score_good_count || 0,
+                    score_bad_count: record.score_bad_count || 0,
+                    score_miss_count: record.score_miss_count || 0,
+                    score_fracture_exact_count: record.score_fracture_exact_count || 0,
+                    score_fracture_miss_count: record.score_fracture_miss_count || 0,
+                    played_at: record.played_at || null,
+                    game_version: record.game_version || 'v5.0',
+                    grade: record.grade || '',
+                    _source: 'cloud_recent',
+                    _modifiers: modifiers,
+                    _cloudReality: record.reality || 0,
+                    _cloudEnriched: true
+                })
+                mergedCount++
+            }
+        }
+
+        if (firstTouchRecord) this.cloudRecentPlay = firstTouchRecord
+        this.saveCache()
+        return { mergedCount, enrichedCount }
+    }
+
+    /**
      * 删除存档
      */
     deleteSave() {
@@ -743,6 +1000,9 @@ export default class SaveManager {
             this.saveType = 'unknown'
             this.nyaChartProgress = null
             this.nyaStarCount = null
+            this.cloudRankReality = null
+            this.cloudRecentPlay = null
+            this.cloudUsername = null
             return true
         } catch (e) {
             return false

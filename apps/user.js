@@ -550,6 +550,7 @@ export class miluser extends milPluginBase {
                 gradeIcon: gradeInfo.iconName,
                 exact: record.score_exact_count || 0,
                 perfect: record.score_perfect_count || 0,
+                great: record.score_great_count || 0,
                 good: record.score_good_count || 0,
                 bad: record.score_bad_count || 0,
                 miss: record.score_miss_count || 0,
@@ -828,7 +829,8 @@ async function renderScore(save, songKey) {
             let gradeInfo = getGradeForRecord(record, chart)
             let singleRlt = calcReality(record.score, chart.difficulty, parseGameVersion(record.game_version), record.score_accuracy)
             // saves.db / nya_profiler 不含判定明细，不显示判定详细
-            let showJudges = record._source !== 'saves' && record._source !== 'nya_profiler'
+            // 但若被云端 Rank 接口富化过（_cloudEnriched），则有详细判定数据可展示
+            let showJudges = (record._source !== 'saves' && record._source !== 'nya_profiler') || record._cloudEnriched
 
             scoreData.push({
                 level,
@@ -842,6 +844,7 @@ async function renderScore(save, songKey) {
                 gradeIcon: gradeInfo.iconName,
                 exact: showJudges ? (record.score_exact_count || 0) : 0,
                 perfect: showJudges ? (record.score_perfect_count || 0) : 0,
+                great: showJudges ? (record.score_great_count || 0) : 0,
                 good: showJudges ? (record.score_good_count || 0) : 0,
                 bad: showJudges ? (record.score_bad_count || 0) : 0,
                 miss: showJudges ? (record.score_miss_count || 0) : 0,

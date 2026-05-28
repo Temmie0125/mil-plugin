@@ -94,12 +94,23 @@ export class milcloud extends milPluginBase {
         if (auth.isBound()) {
             let isValid = await auth.ensureValidToken()
             if (isValid) {
-                send.send_with_At(e, `你已授权 Milthm 云存档，Token 自动续期中，无需重复授权\n如需更换账号，请先使用 /unbind 解除授权`)
-                return true
+                let missing = auth.getMissingScopes()
+                if (missing.length === 0) {
+                    send.send_with_At(e, `你已授权 Milthm 云存档，Token 自动续期中，无需重复授权\n如需更换账号，请先使用 /unbind 解除授权`)
+                    return true
+                }
+                // Scope 不全，允许直接重新授权覆盖
+                send.send_with_At(e,
+                    `检测到授权 Scope 缺少: ${missing.join(', ')}\n` +
+                    `正在重新发起授权以获取完整权限...`,
+                    false, { recallMsg: 10 }
+                )
             }
             // token 已过期，清除旧 token 并继续新授权流程
-            auth.clearTokens()
-            logger.debug('[mil-cloud] 用户旧 token 已过期，自动清除')
+            if (!isValid) {
+                auth.clearTokens()
+                logger.debug('[mil-cloud] 用户旧 token 已过期，自动清除')
+            }
         }
 
         // 发起 Device Auth
@@ -353,67 +364,192 @@ export class milcloud extends milPluginBase {
 
         updatingUsers.add(userId)
 
+        // 检查 scope 是否完整
+        let missingScopes = auth.getMissingScopes()
+        if (missingScopes.length > 0) {
+            await send.send_with_At(e,
+                `⚠️ 授权 Scope 缺少: ${missingScopes.join(', ')}\n` +
+                `建议使用 /${Config.getUserCfg('config', 'cmdhead')} bind 重新授权（无需 unbind）`,
+                true
+            )
+        }
+
         let cmdHead = Config.getUserCfg('config', 'cmdhead')
 
         try {
-            // 1. 获取存档信息（预览）
-            let saveInfo
-            try {
-                saveInfo = await auth.fetchSaveInfo()
-            } catch (err) {
-                if (err.message.includes('未授权') || err.message.includes('token 已失效')) {
-                    send.send_with_At(e, `临时授权已过期，请重新 /${cmdHead} bind 授权`)
-                    return true
-                }
-                throw err
-            }
-
-            // 2. 获取存档下载地址
-            let saveData
-            try {
-                saveData = await auth.fetchSaveData()
-            } catch (err) {
-                if (err.message.includes('未授权') || err.message.includes('token 已失效')) {
-                    send.send_with_At(e, `临时授权已过期，请重新 /${cmdHead} bind 授权`)
-                    return true
-                }
-                throw err
-            }
-
-            // 3. 下载存档文件
             send.send_with_At(e, "正在更新，请稍等一下哦！>_<", false, { recallMsg: 5 })
-            let fileBuffer = await auth.downloadSaveFile(saveData.fileUrl)
+            // 1. 确保本地有存档管理器（加载缓存数据）
+            let save = getSave.saves[userId]
+            if (!save) {
+                save = new SaveManager(userId)
+                getSave.saves[userId] = save
+            }
+            save.ensureLoaded()
+            let hasLocalData = save.scores.length > 0
 
-            // 4. 检测文件格式并导入
-            let isJSON = fileBuffer.length > 0 && fileBuffer[0] === 0x7B // '{'
-            let result
-
-            if (isJSON) {
-                let jsonStr = fileBuffer.toString('utf8')
-                logger.debug('[mil-cloud] 检测到 JSON 格式云存档，直接解析')
-                result = getSave.importFromJSON(userId, jsonStr)
-            } else {
-                logger.debug('[mil-cloud] 检测到二进制格式存档，按 SQLite 导入')
-                let dataDir = `${Plugin_Path}/data/saves`
-                if (!fs.existsSync(dataDir)) {
-                    fs.mkdirSync(dataDir, { recursive: true })
+            // 2. 获取 Milthm 云用户名（优先缓存）
+            let cloudUsername = save.cloudUsername || null
+            if (!cloudUsername) {
+                try {
+                    let cloudUser = await auth.fetchCloudUser()
+                    cloudUsername = cloudUser.username
+                    if (cloudUsername) {
+                        save.cloudUsername = cloudUsername
+                        save.saveCache()
+                        logger.info(`[mil-cloud] 云用户名已缓存: ${cloudUsername}`)
+                    }
+                } catch (err) {
+                    logger.warn('[mil-cloud] 获取用户信息失败:', err.message)
                 }
-                let tempPath = `${Plugin_Path}/data/temp_cloud_${userId}.db`
-                fs.writeFileSync(tempPath, fileBuffer)
-                result = await getSave.importSave(userId, tempPath)
-                try { fs.unlinkSync(tempPath) } catch { }
             }
 
-            if (result.success) {
+            // 3. 获取云端 Rank + Recent 数据（轻量，不消耗存档限额）
+            let rankData = null
+            let recentRecords = null
+            if (cloudUsername) {
+                try {
+                    rankData = await auth.fetchRankData(cloudUsername)
+                    logger.info(`[mil-cloud] Rank 获取成功`)
+                } catch (err) {
+                    logger.warn('[mil-cloud] 获取 Rank 失败:', err.message)
+                }
+                try {
+                    recentRecords = await auth.fetchRecentData(cloudUsername)
+                    logger.info(`[mil-cloud] Recent 获取成功: ${recentRecords?.length} 条`)
+                } catch (err) {
+                    logger.warn('[mil-cloud] 获取 Recent 失败:', err.message)
+                }
+            }
+
+            let cloudReality = rankData ? rankData.touchReality : null
+
+            // 4. 用 rank/recent 数据补充本地存档，判断是否需要全量更新
+            let needFullUpdate = !hasLocalData
+            let recentUpdateEntry = null
+
+            if (!needFullUpdate && recentRecords && recentRecords.length > 0) {
+                // 捕获旧成绩用于 diff
+                let oldScores = getSave._captureOldScores(userId)
+
+                // 导入 recent（更新部分成绩）、导入 rank（富化判定数据）
+                save.importFromCloudRecent(recentRecords)
+                if (rankData && rankData.touchRanks && rankData.touchRanks.length > 0) {
+                    save.importFromCloudRank(rankData.touchRanks, rankData.touchReality)
+                }
+
+                // 生成更新条目（无论是否触发全量更新都要记录 diff）
+                recentUpdateEntry = getSave._recordUpdate(userId, oldScores, save.scores, save.username || 'Unknown')
+
+                // 比对 Reality 决定是否全量
+                let localB20 = save.getB20WithReality(20, getInfo)
+                let localReality = localB20.reality
+
+                if (cloudReality != null && cloudReality > 0) {
+                    let diff = Math.abs(cloudReality - localReality)
+                    if (diff >= 0.01) {
+                        needFullUpdate = true
+                        logger.warn(`[mil-cloud] Reality 不一致 (diff=${diff.toFixed(4)})，触发全量更新`)
+                    } else {
+                        logger.info(`[mil-cloud] Reality 一致 (diff=${diff.toFixed(4)})，跳过全量更新`)
+                    }
+                } else if (cloudReality == null) {
+                    needFullUpdate = true
+                    logger.warn('[mil-cloud] cloudReality 为空，触发全量更新')
+                }
+                // cloudReality === 0 时不强制更新
+            }
+
+            // 5. 全量更新或跳过
+            if (needFullUpdate) {
+                
+
+                let saveData
+                try {
+                    saveData = await auth.fetchSaveData()
+                } catch (err) {
+                    if (err.message.includes('未授权') || err.message.includes('token 已失效')) {
+                        send.send_with_At(e, `临时授权已过期，请重新 /${cmdHead} bind 授权`)
+                        return true
+                    }
+                    if (err.message.includes('GameSaveDownloadLimitExceededError') || err.message.includes('Download limit reached')) {
+                        send.send_with_At(e, '今日存档下载次数已达上限（5次/天），请明天再试~\n（提示：数据已通过 Rank/Recent 接口同步，不影响日常查分）')
+                        return true
+                    }
+                    throw err
+                }
+
+                let fileBuffer
+                try {
+                    fileBuffer = await auth.downloadSaveFile(saveData.fileUrl)
+                } catch (err) {
+                    if (err.message.includes('Download limit reached') || err.message.includes('429')) {
+                        send.send_with_At(e, '今日存档下载次数已达上限（5次/天），请明天再试~\n（提示：数据已通过 Rank/Recent 接口同步，不影响日常查分）')
+                        return true
+                    }
+                    throw err
+                }
+
+                let isJSON = fileBuffer.length > 0 && fileBuffer[0] === 0x7B
+                let result
+
+                if (isJSON) {
+                    let jsonStr = fileBuffer.toString('utf8')
+                    logger.debug('[mil-cloud] 检测到 JSON 格式云存档，直接解析')
+                    result = getSave.importFromJSON(userId, jsonStr)
+                } else {
+                    logger.debug('[mil-cloud] 检测到二进制格式存档，按 SQLite 导入')
+                    let dataDir = `${Plugin_Path}/data/saves`
+                    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true })
+                    let tempPath = `${Plugin_Path}/data/temp_cloud_${userId}.db`
+                    fs.writeFileSync(tempPath, fileBuffer)
+                    result = await getSave.importSave(userId, tempPath)
+                    try { fs.unlinkSync(tempPath) } catch { }
+                }
+
+                if (!result.success) {
+                    send.send_with_At(e, `存档导入失败：${result.msg}`)
+                    return true
+                }
+
+                // 全量导入后再用 rank/recent 富化
+                save = getSave.saves[userId]
+                if (rankData && rankData.touchRanks && rankData.touchRanks.length > 0) {
+                    save.importFromCloudRank(rankData.touchRanks, rankData.touchReality)
+                }
+                if (recentRecords && recentRecords.length > 0) {
+                    save.importFromCloudRecent(recentRecords)
+                }
+
                 let updateImg = await renderUpdateImage(userId, result.updateEntry)
                 send.send_with_At(e, updateImg)
+
+                // Reality 不一致提示
+                let localB20 = save.getB20WithReality(20, getInfo)
+                if (cloudReality != null && cloudReality > 0 && Math.abs(cloudReality - localB20.reality) >= 0.01) {
+                    await send.send_with_At(e,
+                        `⚠️ 云端 Reality (${cloudReality.toFixed(4)}) 与本地计算值 (${localB20.reality.toFixed(4)}) 不一致\n` +
+                        `差值: ${(cloudReality - localB20.reality).toFixed(4)}\n` +
+                        `可能原因：定数变更或计算公式更新，请留意 info.json 是否需要同步更新`,
+                        true
+                    )
+                }
             } else {
-                send.send_with_At(e, `存档导入失败：${result.msg}`)
+                // 无需全量更新，展示 recent 导入的 diff
+                if (recentUpdateEntry) {
+                    let updateImg = await renderUpdateImage(userId, recentUpdateEntry)
+                    send.send_with_At(e, updateImg)
+                }
+                send.send_with_At(e,
+                    `云端 Reality: ${cloudReality?.toFixed(4) || '未知'} | 未触发全量存档下载（节省每日 5 次限额）`,
+                    true
+                )
             }
         } catch (err) {
             logger.error('[mil-cloud] 云端更新失败:', err)
             if (err.message.includes('GameSaveEmptyError')) {
                 send.send_with_At(e, '云端没有找到你的存档数据哦！\n请在游戏内上传云存档后再使用更新功能~')
+            } else if (err.message.includes('GameSaveDownloadLimitExceededError') || err.message.includes('Download limit reached')) {
+                send.send_with_At(e, '今日存档下载次数已达上限（5次/天），请明天再试~')
             } else {
                 send.send_with_At(e, `云端更新失败：${err.message}`)
             }

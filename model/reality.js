@@ -49,26 +49,17 @@ function realityv2(score, c) {
 /**
  * 计算单曲 Reality
  * 规则：
- *   旧版 (gameVersion < 4.0)：分数 > 1005000 或 AP(acc=100%) → v3公式，否则 v2
- *   新版 (gameVersion >= 4.0)：统一使用 v3 公式
+ *   旧版 (gameVersion < 4.0)：使用 v2 公式
+ *   新版 (gameVersion >= 4.0)：使用 v3 公式
+ * 谱面同时存在新旧两版记录时，分别计算后取最大 reality。
  * @param {number} score
  * @param {number} c - 定数
  * @param {number} [gameVersion=5.0] - 游戏版本号
- * @param {number} [accuracy=0] - 准确率 (0~1)，用于判断 AP
  * @returns {number}
  */
-function calcReality(score, c, gameVersion = 5.0, accuracy = 0) {
-    let isAP = accuracy >= 0.9999
-    let v3 = realityv3(score, c)
-
+function calcReality(score, c, gameVersion = 5.0) {
     if (gameVersion >= 4.0) {
-        // 新版统一使用 v3 公式
-        return v3
-    }
-
-    // 旧版：分数 > 1005000（v2上限）或 AP 时直接用 v3
-    if (score > 1005000 || isAP) {
-        return v3
+        return realityv3(score, c)
     }
     return realityv2(score, c)
 }

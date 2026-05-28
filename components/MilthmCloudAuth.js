@@ -12,11 +12,11 @@ const OIDC_DISCOVERY_URL = `${MILTHM_API_BASE}/oidc/.well-known/openid-configura
 /** 硬编码的已知端点——作为 OIDC 发现的回退方案 */
 const DEFAULT_DEVICE_AUTH_ENDPOINT = `${MILTHM_API_BASE}/oidc/device_authorization`
 const DEFAULT_TOKEN_ENDPOINT = `${MILTHM_API_BASE}/oidc/oauth/token`
-
+const DEFAULT_USERINFO_ENDPOINT = `${MILTHM_API_BASE}/oidc/userinfo`
 const TOKEN_DIR = `${process.cwd()}/plugins/mil-plugin/data/tokens`
 
 /** 默认 scope：读取存档 + 离线续期（获取 refresh_token） */
-const DEFAULT_SCOPE = 'milthm:save:read offline_access'
+const DEFAULT_SCOPE = 'milthm:save:read offline_access milthm:event:recent milthm:stats:best_performance user'
 
 /**
  * @typedef {Object} OIDCConfig
@@ -32,6 +32,7 @@ const DEFAULT_SCOPE = 'milthm:save:read offline_access'
  * @property {string} token_type
  * @property {number} expires_at - 过期时间戳 (ms)
  * @property {string} scope
+ * @property {string} cloud_username - 从 id_token/响应中提取的 Milthm 云用户名
  */
 
 export default class MilthmCloudAuth {
@@ -119,6 +120,17 @@ export default class MilthmCloudAuth {
         return !!this._token
     }
 
+    /**
+     * 对比本地 token 的 scope 与插件需求，返回缺少的 scope 列表
+     * @returns {string[]} 缺少的 scope，空数组表示完整
+     */
+    getMissingScopes() {
+        if (!this._token) this.loadToken()
+        let stored = new Set((this._token?.scope || '').split(' ').filter(Boolean))
+        let required = new Set(DEFAULT_SCOPE.split(' ').filter(Boolean))
+        return [...required].filter(s => !stored.has(s))
+    }
+
     // ==================== OIDC 发现 ====================
 
     /**
@@ -136,7 +148,7 @@ export default class MilthmCloudAuth {
                 this._oidcConfig = {
                     device_authorization_endpoint: config.device_authorization_endpoint || DEFAULT_DEVICE_AUTH_ENDPOINT,
                     token_endpoint: config.token_endpoint || DEFAULT_TOKEN_ENDPOINT,
-                    userinfo_endpoint: config.userinfo_endpoint || ''
+                    userinfo_endpoint: config.userinfo_endpoint || DEFAULT_USERINFO_ENDPOINT
                 }
                 logger.debug('[mil-cloud] OIDC 端点发现成功', this._oidcConfig)
                 return this._oidcConfig
@@ -252,6 +264,7 @@ export default class MilthmCloudAuth {
                 token_type: data.token_type,
                 expires_in: data.expires_in,
                 has_refresh_token: !!data.refresh_token,
+                has_id_token: !!data.id_token,
                 scope: data.scope
             })
             this._token = this._buildTokenData(data)
@@ -430,6 +443,131 @@ export default class MilthmCloudAuth {
         }
     }
 
+    // ==================== UserInfo / Rank / Recent 接口 ====================
+
+    /**
+     * 获取 Milthm 云用户名（需要 scope: milthm:profile）
+     * 优先级：token 缓存 > /v1/user 接口
+     * @returns {Promise<{username: string, nickname: string, uid: string}>}
+     */
+    async fetchCloudUser() {
+        // 1) 优先：token 中已缓存的用户名
+        if (!this._token) this.loadToken()
+        if (this._token && this._token.cloud_username) {
+            logger.debug('[mil-cloud] 使用 token 缓存的用户名:', this._token.cloud_username)
+            return {
+                username: this._token.cloud_username,
+                nickname: '',
+                uid: ''
+            }
+        }
+
+        // 2) 调用 /v1/user 接口
+        let token = await this.getAccessToken()
+        if (!token) throw new Error('未授权或 token 已失效')
+
+        let resp = await fetch(`${MILTHM_API_BASE}/v1/user?`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+
+        let body = await resp.text()
+        if (!resp.ok) {
+            throw new Error(`获取用户信息失败: HTTP ${resp.status}`)
+        }
+
+        let data = JSON.parse(body)
+        logger.info('[mil-cloud] /v1/user 响应:', body.substring(0, 300))
+
+        if (data.code && data.code !== 'OK') {
+            throw new Error(`用户信息 API 错误: ${data.message || data.code}`)
+        }
+
+        let user = data.data || {}
+        let username = user.username || ''
+
+        // 拿到用户名后缓存到 token
+        if (username && this._token) {
+            this._token.cloud_username = username
+            this.saveToken()
+            logger.info(`[mil-cloud] 用户名已缓存到 token: ${username}`)
+        }
+
+        return {
+            username,
+            nickname: user.nickname || '',
+            uid: user.uid || ''
+        }
+    }
+
+    /**
+     * 获取 B20 曲目排行与详细游玩表现
+     * 需要 scope: milthm:stats:best_performance
+     * @param {string} username - Milthm 云用户名
+     * @returns {Promise<{touchReality: number, keyboardReality: number, touchRanks: any[], keyboardRanks: any[]}>}
+     */
+    async fetchRankData(username) {
+        let token = await this.getAccessToken()
+        if (!token) throw new Error('未授权或 token 已失效，请重新 /mil bind 授权')
+
+        let resp = await fetch(`${MILTHM_API_BASE}/v1/user/${encodeURIComponent(username)}/rank?`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+
+        let body = await resp.text()
+        if (!resp.ok) {
+            throw new Error(`获取 Rank 数据失败: HTTP ${resp.status} ${body}`)
+        }
+
+        let data = JSON.parse(body)
+        if (data.code && data.code !== 'OK') {
+            throw new Error(`Rank API 错误: ${data.message || data.code}`)
+        }
+
+        let inner = data.data || {}
+        let touchRanks = inner.touch_ranks || []
+        let keyboardRanks = inner.keyboard_ranks || []
+
+        // 优先读服务端字段，回退到 B20 均值（限前 20 首）
+        let computeAvg = (ranks) => ranks.length > 0
+            ? ranks.slice(0, 20).reduce((s, r) => s + (r.reality || 0), 0) / Math.min(ranks.length, 20)
+            : 0
+        let touchReality = (inner.touch_reality != null) ? inner.touch_reality : computeAvg(touchRanks)
+        let keyboardReality = (inner.keyboard_reality != null) ? inner.keyboard_reality : computeAvg(keyboardRanks)
+
+        logger.info(`[mil-cloud] Rank: touch=${touchReality.toFixed(4)} (${touchRanks.length}首), keyboard=${keyboardReality.toFixed(4)} (${keyboardRanks.length}首)`)
+
+        return { touchReality, keyboardReality, touchRanks, keyboardRanks }
+    }
+
+    /**
+     * 获取最近游玩记录
+     * 需要 scope: milthm:event:recent
+     * @param {string} username - Milthm 云用户名
+     * @returns {Promise<any[]>}
+     */
+    async fetchRecentData(username) {
+        let token = await this.getAccessToken()
+        if (!token) throw new Error('未授权或 token 已失效，请重新 /mil bind 授权')
+
+        let resp = await fetch(`${MILTHM_API_BASE}/v1/user/${encodeURIComponent(username)}/recent?`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+
+        let body = await resp.text()
+        if (!resp.ok) {
+            throw new Error(`获取 Recent 数据失败: HTTP ${resp.status} ${body}`)
+        }
+
+        let data = JSON.parse(body)
+        if (data.code && data.code !== 'OK') {
+            throw new Error(`Recent API 错误: ${data.message || data.code}`)
+        }
+
+        // recent 响应: data.data 是一个数组，通过 modifiers 区分 touch/keyboard
+        let allRecords = data.data?.data || []
+        return allRecords
+    }
+
     /**
      * 下载存档文件内容（可处理重定向）
      * @param {string} fileUrl
@@ -483,16 +621,57 @@ export default class MilthmCloudAuth {
 
     /**
      * 从 API 响应构建 TokenData
+     * 同时尝试从 id_token (JWT) 或直接字段中提取云用户名并缓存
      * @param {Object} data
      * @returns {TokenData}
      */
     _buildTokenData(data) {
+        // 尝试从多种来源提取云用户名
+        let cloudUsername = ''
+
+        // 1) 优先: id_token (JWT) 中的 preferred_username
+        if (data.id_token) {
+            try {
+                let payload = parseJwtPayload(data.id_token)
+                cloudUsername = payload.preferred_username || payload.sub || ''
+                if (cloudUsername) {
+                    logger.info(`[mil-cloud] 从 id_token 提取用户名: ${cloudUsername}`)
+                }
+            } catch (e) {
+                logger.warn('[mil-cloud] id_token 解析失败:', e.message)
+            }
+        }
+
+        // 2) 其次: token 响应中的直接字段
+        if (!cloudUsername) {
+            cloudUsername = data.preferred_username || data.username || ''
+            if (cloudUsername) {
+                logger.info(`[mil-cloud] 从 token 响应提取用户名: ${cloudUsername}`)
+            }
+        }
+
         return {
             access_token: data.access_token,
             refresh_token: data.refresh_token || '',
             token_type: data.token_type || 'Bearer',
             expires_at: Date.now() + (data.expires_in || 3600) * 1000,
-            scope: data.scope || DEFAULT_SCOPE
+            scope: data.scope || DEFAULT_SCOPE,
+            cloud_username: cloudUsername || ''
         }
     }
+}
+
+/**
+ * 解析 JWT payload（不验证签名，仅提取用户信息）
+ * @param {string} jwt
+ * @returns {object}
+ */
+function parseJwtPayload(jwt) {
+    let parts = jwt.split('.')
+    if (parts.length < 2) throw new Error('无效 JWT 格式')
+    let payload = parts[1]
+    // 补齐 Base64 padding
+    while (payload.length % 4 !== 0) payload += '='
+    let decoded = Buffer.from(payload, 'base64').toString('utf8')
+    return JSON.parse(decoded)
 }

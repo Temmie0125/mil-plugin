@@ -160,7 +160,6 @@ export default class UpdateLog {
         // 计算每条记录的 Reality 并按降序排序，取前 6
         let scored = newScores.map(s => {
             let rlt, difficulty
-            // Nya Profiler：直接使用 API 预计算值（info.json 定数可能不同）
             if (s._nyaSingleRating != null) {
                 rlt = s._nyaSingleRating
                 difficulty = s._nyaDifficulty || 0
@@ -412,7 +411,6 @@ export default class UpdateLog {
         for (let s of scores) {
             let rlt
 
-            // Nya Profiler：直接用 API 预计算值
             if (s._nyaSingleRating != null) {
                 rlt = s._nyaSingleRating
             } else {
