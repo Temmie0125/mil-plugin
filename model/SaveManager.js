@@ -781,6 +781,10 @@ export default class SaveManager {
                 if (rankEntry.score > existing.score) {
                     existing.score = rankEntry.score
                     existing.score_accuracy = rankEntry.score_accuracy ?? existing.score_accuracy
+                    // 同步更新评级
+                    let sg = fCompute.getScoreGrade(rankEntry.score)
+                    let gm = { 'R': 0, 'M': 1, 'SS': 2, 'S': 3, 'A': 4, 'B': 5, 'C': 6, 'F': 7 }
+                    if (gm[sg] != null) { existing._bestLevel = gm[sg]; existing.grade = sg }
                 }
 
                 // 合并详细判定数据
@@ -804,6 +808,14 @@ export default class SaveManager {
                 }
                 if (modifiers.length > 0) {
                     existing._modifiers = modifiers
+                }
+
+                // 根据云端判定数据修正 _achievedStatus（FC 检测）
+                if ((rankEntry.score_bad_count || 0) === 0 && (rankEntry.score_miss_count || 0) === 0) {
+                    if (!existing._achievedStatus) existing._achievedStatus = []
+                    if (!existing._achievedStatus.includes(4)) {
+                        existing._achievedStatus.push(4)
+                    }
                 }
 
                 // 云端返回的 Reality 值
@@ -936,6 +948,10 @@ export default class SaveManager {
                 if (record.score > existing.score) {
                     existing.score = record.score
                     existing.score_accuracy = record.score_accuracy ?? existing.score_accuracy
+                    // 同步更新评级
+                    let sg = fCompute.getScoreGrade(record.score)
+                    let gm = { 'R': 0, 'M': 1, 'SS': 2, 'S': 3, 'A': 4, 'B': 5, 'C': 6, 'F': 7 }
+                    if (gm[sg] != null) { existing._bestLevel = gm[sg]; existing.grade = sg }
                     existing.score_exact_count = record.score_exact_count ?? existing.score_exact_count ?? 0
                     existing.score_perfect_count = record.score_perfect_count ?? existing.score_perfect_count ?? 0
                     existing.score_great_count = record.score_great_count ?? existing.score_great_count ?? 0
@@ -947,6 +963,11 @@ export default class SaveManager {
                     if (record.played_at && !existing.played_at) existing.played_at = record.played_at
                     if (modifiers.length > 0) existing._modifiers = modifiers
                     if (record.reality != null) existing._cloudReality = record.reality
+                    // FC 检测
+                    if ((record.score_bad_count || 0) === 0 && (record.score_miss_count || 0) === 0) {
+                        if (!existing._achievedStatus) existing._achievedStatus = []
+                        if (!existing._achievedStatus.includes(4)) existing._achievedStatus.push(4)
+                    }
                     if (!existing._cloudEnriched) { existing._cloudEnriched = true; enrichedCount++ }
                     this.scores[idx] = existing
                 } else if (!existing._cloudEnriched) {
@@ -961,6 +982,11 @@ export default class SaveManager {
                     existing.score_fracture_miss_count = record.score_fracture_miss_count ?? existing.score_fracture_miss_count ?? 0
                     if (modifiers.length > 0) existing._modifiers = modifiers
                     if (record.reality != null) existing._cloudReality = record.reality
+                    // FC 检测
+                    if ((record.score_bad_count || 0) === 0 && (record.score_miss_count || 0) === 0) {
+                        if (!existing._achievedStatus) existing._achievedStatus = []
+                        if (!existing._achievedStatus.includes(4)) existing._achievedStatus.push(4)
+                    }
                     existing._cloudEnriched = true; enrichedCount++
                     this.scores[idx] = existing
                 }
