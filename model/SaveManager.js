@@ -777,7 +777,13 @@ export default class SaveManager {
                 let idx = scoreIndex[cid]
                 let existing = this.scores[idx]
 
-                // 合并详细判定数据（云端数据覆盖本地缺失的详情）
+                // Rank 是权威 B20，分数更高时全量覆盖
+                if (rankEntry.score > existing.score) {
+                    existing.score = rankEntry.score
+                    existing.score_accuracy = rankEntry.score_accuracy ?? existing.score_accuracy
+                }
+
+                // 合并详细判定数据
                 existing.score_exact_count = rankEntry.score_exact_count ?? existing.score_exact_count ?? 0
                 existing.score_perfect_count = rankEntry.score_perfect_count ?? existing.score_perfect_count ?? 0
                 existing.score_great_count = rankEntry.score_great_count ?? existing.score_great_count ?? 0

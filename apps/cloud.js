@@ -431,11 +431,11 @@ export class milcloud extends milPluginBase {
                 // 捕获旧成绩用于 diff
                 let oldScores = getSave._captureOldScores(userId)
 
-                // 导入 recent（更新部分成绩）、导入 rank（富化判定数据）
-                save.importFromCloudRecent(recentRecords)
+                // 导入 rank（权威 B20）先于 recent（避免低分覆盖）
                 if (rankData && rankData.touchRanks && rankData.touchRanks.length > 0) {
                     save.importFromCloudRank(rankData.touchRanks, rankData.touchReality)
                 }
+                save.importFromCloudRecent(recentRecords)
 
                 // 生成更新条目（无论是否触发全量更新都要记录 diff）
                 recentUpdateEntry = getSave._recordUpdate(userId, oldScores, save.scores, save.username || 'Unknown')
@@ -452,11 +452,27 @@ export class milcloud extends milPluginBase {
                     } else {
                         logger.info(`[mil-cloud] Reality 一致 (diff=${diff.toFixed(4)})，跳过全量更新`)
                     }
-                } else if (cloudReality == null) {
-                    needFullUpdate = true
-                    logger.warn('[mil-cloud] cloudReality 为空，触发全量更新')
+                    // 逐曲诊断（diff > 0.001 时打印详情）
+                    if (diff > 0.001 && rankData && rankData.touchRanks) {
+                        let localMap = {}
+                        for (let s of localB20.scores) {
+                            if (s._reality != null) localMap[s.chart_id] = s._reality
+                        }
+                        let mismatches = []
+                        for (let r of rankData.touchRanks.slice(0, 20)) {
+                            let lr = localMap[r.chart_id]
+                            if (lr != null) {
+                                let d = Math.abs((r.reality || 0) - lr)
+                                if (d > 0.001) mismatches.push(`${r.chart_id?.slice(0,8)} c=${(r.reality||0).toFixed(4)} l=${lr.toFixed(4)} Δ${d.toFixed(4)}`)
+                            } else {
+                                mismatches.push(`${r.chart_id?.slice(0,8)} c=${(r.reality||0).toFixed(4)} l=缺失`)
+                            }
+                        }
+                        if (mismatches.length > 0) {
+                            logger.info(`[mil-cloud] 逐曲差异(${mismatches.length}首):\n  ${mismatches.join('\n  ')}`)
+                        }
+                    }
                 }
-                // cloudReality === 0 时不强制更新
             }
 
             // 5. 全量更新或跳过
