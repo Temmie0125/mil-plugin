@@ -1,0 +1,167 @@
+@import "../common/common.css";
+
+.info-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    padding: 10px 40px;
+    gap: 30px;
+    z-index: 1;
+}
+
+.recent-player-info {
+    flex: 1;
+    min-width: 0;
+    padding: 16px 0;
+}
+
+.player-avatar {
+    position: relative;
+}
+
+.star-overlay {
+    position: absolute;
+    top: 15px;
+    left: 0px;
+    width: 80px;
+    height: 80px;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.recent-container {
+    display: flex;
+    padding: 10px 40px;
+    gap: 30px;
+    z-index: 1;
+}
+
+.recent-left {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.recent-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    width: 520px;
+}
+
+.recent-card {
+    padding: 24px 28px;
+    background: rgba(0,0,0,0.35);
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.recent-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.dif-value {
+    margin-left: 8px;
+    font-size: 20px;
+    font-weight: bold;
+    opacity: 0.6;
+}
+
+.recent-grade img {
+    height: 52px;
+}
+
+.recent-score {
+    font-size: 40px;
+    font-weight: bold;
+    color: #4fc3f7;
+    margin-bottom: 4px;
+}
+
+.recent-acc {
+    font-size: 18px;
+    opacity: 0.7;
+    margin-bottom: 20px;
+}
+
+.judge-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.judge-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+}
+
+.judge-label {
+    width: 100px;
+    font-size: 15px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.perfect-label { color: #ffd54f; }
+.good-label    { color: #64b5f6; }
+.bad-label     { color: #ef5350; }
+
+.judge-value {
+    font-size: 18px;
+    font-weight: bold;
+    flex: 1;
+    text-align: right;
+}
+
+.judge-sub {
+    font-size: 12px;
+    font-weight: normal;
+    opacity: 0.5;
+}
+
+.recent-time {
+    font-size: 13px;
+    opacity: 0.4;
+    margin-top: 8px;
+}
+
+.createdbox {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    margin-top: 3%;
+    margin-bottom: 3%;
+    justify-content: center;
+    z-index: 1;
+}
+
+.createdbox p { color: white; font-size: 70px; }
+
+.mil-plugin {
+    display: flex;
+    z-index: 1;
+    justify-content: center;
+    align-items: center;
+}
+
+.mil-plugin p {
+    font-size: xx-large;
+    text-shadow: 0 0 20px rgb(0 186 255);
+}
+
+.ver {
+    display: flex;
+    z-index: 1;
+}
+
+.ver p {
+    font-size: large;
+    text-shadow: 0 0 20px #fff700;
+}

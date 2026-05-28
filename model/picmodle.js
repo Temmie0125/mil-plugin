@@ -111,5 +111,16 @@ export default {
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })
+    },
+
+    /**
+     * 最近游玩记录
+     */
+    async recent(data) {
+        return enqueue(async () => {
+            let buff = await puppeteer.screenshot('recent/recent', data)
+            if (!buff) return '图片生成失败QAQ'
+            return segment.image(buff)
+        })
     }
 }

@@ -1,0 +1,90 @@
+{{extend defaultLayout}}
+
+{{block 'css'}}
+<link rel="stylesheet" href="{{_res_path}}html/recent/recent.css">
+{{/block}}
+
+{{block 'main'}}
+<div class="info-bar">
+    <div class="recent-player-info">
+        <div class="section-title">Recent Play</div>
+        <div style="font-size:22px;font-weight:bold;margin-bottom:4px;" name="pvis">{{songName}}</div>
+        <div style="opacity:0.6;">by {{artist}}</div>
+        {{if chapter_zh}}
+        <div style="opacity:0.4;font-size:13px;margin-top:4px;">{{chapter_zh}}</div>
+        {{/if}}
+    </div>
+    <div class="player-bar">
+        <div class="player-avatar">
+            <img src="{{_res_path}}avatar/{{avatar}}" alt="avatar">
+            {{if starLevel > 0}}
+            <img class="star-overlay" src="{{_res_path}}icon/reality{{starLevel}}.png" alt="star">
+            {{/if}}
+        </div>
+        <div class="player-name">
+            <p name="pvis">{{username}}</p>
+        </div>
+        <div class="player-reality">
+            <div class="rlt-value">{{reality.toFixed(4)}}</div>
+            <div class="rlt-label">Reality</div>
+        </div>
+    </div>
+</div>
+
+<div class="recent-container">
+    <div class="recent-left">
+        {{if illustration}}
+        <div class="ill-container">
+            <div class="ill">
+                <img src="{{illustration}}" alt="ill">
+            </div>
+            <div class="ill ill-background">
+                <img src="{{illustration}}" alt="ill">
+            </div>
+        </div>
+        {{/if}}
+    </div>
+
+    <div class="recent-right">
+        <div class="recent-card">
+            <div class="recent-header">
+                <div>
+                    <span class="dif-badge dif-{{level}}">{{levelAbbr}}</span>
+                    <span class="dif-value">{{difficulty.toFixed(1)}}</span>
+                </div>
+                {{if gradeIcon}}
+                <div class="recent-grade">
+                    <img src="{{_res_path}}icon/{{gradeIcon}}.png" alt="{{grade}}">
+                </div>
+                {{/if}}
+            </div>
+            <div class="recent-score">{{score}}</div>
+            <div class="recent-acc">ACC: {{(accuracy * 100).toFixed(2)}}%</div>
+
+            <div class="judge-section">
+                <div class="judge-row">
+                    <div class="judge-label perfect-label">Perfect</div>
+                    <div class="judge-value">{{exact + perfect}} <span class="judge-sub">(Exact: {{exact}} / Perfect: {{perfect}})</span></div>
+                </div>
+                <div class="judge-row">
+                    <div class="judge-label good-label">Good</div>
+                    <div class="judge-value">{{great + good}} <span class="judge-sub">(Great: {{great}} / Good: {{good}})</span></div>
+                </div>
+                <div class="judge-row">
+                    <div class="judge-label bad-label">Bad / Miss</div>
+                    <div class="judge-value">{{bad}} <span class="judge-sub">(Miss: {{miss}})</span></div>
+                </div>
+            </div>
+
+            {{if played_at}}
+            <div class="recent-time">Played: {{played_at}}</div>
+            {{/if}}
+        </div>
+    </div>
+</div>
+
+<div class="createdbox">
+    <div class="mil-plugin"><p>mil-plugin</p></div>
+    <div class="ver"><p>{{version}}</p></div>
+</div>
+{{/block}}

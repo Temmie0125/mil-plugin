@@ -73,6 +73,7 @@ pnpm install
 | `#mil alias <曲目>` | 查看现有别名
 | `#mil score <曲目>` | 查看单曲成绩
 | `#mil ill <曲目>` | 查看曲绘
+| `#mil recent` | 查看最近一次游玩成绩（需要云存档）
 | `#mil delete` | 删除bot端存档数据
 | `#mil bind` | 授权云存档（需要自行配置cilent_id和cilent_secret）
 | `#mil update` | 更新存档数据
@@ -146,7 +147,9 @@ data/
 
 > [!WARNING]
 >
-> - Milthm游戏内不会自动同步云存档，打完歌需要手动上传存档。
+> - Milthm游戏内不会自动同步云存档，首次使用需要手动上传存档。
+> - 后续优先走Rank和Recent接口，Recent接口最多20条最近记录，只有极少数情况会走下载存档更新。下载存档每日最多5次，请合理使用。
+> 
 > - 如果你使用**Re Nya Profiler API**，请注意：
 >    - API有**并发限制**和**每日请求上限**，每个用户每天最多请求存档**5次**。本插件已经做了缓存机制，可自行按需配置缓存有效期，并合理控制请求频率。
 >    - API只能查询Best20以及Overflow2成绩，以及常规谱面完成的统计情况。如果你需要完整的数据，请使用本地导入或者自行申请Milkloud的OIDC client.

@@ -334,6 +334,10 @@ export class miluser extends milPluginBase {
                     fnc: 'data'
                 },
                 {
+                    reg: `^[#/](${Config.getUserCfg('config', 'cmdhead')})(\\s*)(recent|最近)$`,
+                    fnc: 'recent'
+                },
+                {
                     reg: `^[#/](${Config.getUserCfg('config', 'cmdhead')})(\\s*)help$`,
                     fnc: 'help'
                 },
@@ -726,6 +730,90 @@ export class miluser extends milPluginBase {
     }
 
     /**
+     * 最近游玩记录
+     */
+    async recent(e) {
+        let save = await getSave.getSave(e.user_id)
+        if (!save || (!save.hasSave() && save.scores.length === 0)) {
+            send.send_with_At(e, `你还没有导入存档哦！\n请先使用 /${Config.getUserCfg('config', 'cmdhead')} update 更新数据`)
+            return true
+        }
+
+        let record = save.cloudRecentPlay
+        if (!record) {
+            send.send_with_At(e, `暂无最近游玩记录！\n请使用 /${Config.getUserCfg('config', 'cmdhead')} update 同步云端数据后再试~`)
+            return true
+        }
+
+        let player = save.getPlayerInfo()
+        let { reality } = save.getB20WithReality(20, getInfo)
+        let starLevel = computeStarLevel(save, getInfo)
+
+        // 解析歌曲信息
+        let songKey = getInfo.chartIdToSongKey(record.chart_id)
+        let songName = record.chart_id
+        let artist = ''
+        let illustration = ''
+        let chapter_zh = ''
+        let diffLevel = 'Drizzle'
+        let difficulty = 0
+        let gradeIcon = ''
+
+        if (songKey) {
+            let info = getInfo.info(songKey)
+            if (info) {
+                songName = info.song || songKey
+                artist = info.artist || ''
+                illustration = info.illustration || ''
+                chapter_zh = info.chapter_zh || ''
+                for (let level of fCompute.Level) {
+                    if (info.chart[level]?.chartid === record.chart_id) {
+                        diffLevel = level
+                        difficulty = info.chart[level].difficulty || 0
+                        break
+                    }
+                }
+            }
+        }
+
+        // 评级图标
+        let chartInfo = { combo: 1 }
+        let gradeInfo = getGradeForRecord(record, chartInfo)
+        gradeIcon = gradeInfo.iconName
+
+        // 格式化游玩时间
+        let playedAt = record.played_at ? fCompute.formatDate(record.played_at) : ''
+
+        send.send_with_At(e, await picmodle.recent({
+            avatar: randomAvatar(),
+            username: player.username,
+            reality,
+            starLevel,
+            songName,
+            artist,
+            chapter_zh,
+            illustration,
+            level: diffLevel,
+            levelAbbr: fCompute.LevelAbbr[diffLevel] || diffLevel,
+            difficulty,
+            score: record.score,
+            accuracy: record.score_accuracy || 0,
+            grade: gradeInfo.grade,
+            gradeIcon,
+            exact: record.score_exact_count || 0,
+            perfect: record.score_perfect_count || 0,
+            great: record.score_great_count || 0,
+            good: record.score_good_count || 0,
+            bad: record.score_bad_count || 0,
+            miss: record.score_miss_count || 0,
+            played_at: playedAt,
+            background: illustration,
+            version: Version.ver
+        }))
+        return true
+    }
+
+    /**
      * 帮助（图像化）
      */
     async help(e) {
@@ -755,6 +843,7 @@ export class miluser extends milPluginBase {
                         { title: '发送 saves.db 文件', desc: '导入存档（推荐 saves.db，数据更精确）' },
                         { title: `/${cmd} b20 [数量]`, desc: '查询 Best 成绩，例: /mil b30' },
                         { title: `/${cmd} score <曲名>`, desc: '单曲成绩明细' },
+                        { title: `/${cmd} recent`, desc: '最近一次游玩记录' },
                         { title: `/${cmd} data`, desc: '数据统计' },
                         { title: `/${cmd} delete`, desc: '删除存档' }
                     ]
