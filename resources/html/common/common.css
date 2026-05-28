@@ -37,6 +37,41 @@ body {
     filter: blur(80px) brightness(0.35);
 }
 
+
+/* ill曲绘显示方案 */
+.ill {
+    /* width: 380px; */
+    height: auto;
+    border-radius: 20px;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    transform: rotate(-10deg);
+    margin: 40px;
+    grid-area: 1 / 1 ;
+    z-index: 2;
+}
+
+.ill-background {
+    transform: rotate(5deg);
+    margin: 40px;
+    z-index: 1;
+    filter: opacity(0.5) blur(2px) brightness(1.2);
+}
+
+.ill-container {
+    width: 520px;
+    height: auto;
+    display: grid;
+}
+
+.ill img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+
 /* Round corner clip box */
 .clip-box {
     border-radius: 12px;
@@ -334,7 +369,7 @@ body {
 /* Score page */
 .score-container {
     display: flex;
-    padding: 30px 40px;
+    padding: 10px 40px;
     gap: 30px;
     z-index: 1;
 }
@@ -361,8 +396,17 @@ body {
 
 .score-player-info {
     padding: 16px 20px;
-    background: rgba(0,0,0,0.3);
+    /* background: rgba(0,0,0,0.3); */
     border-radius: 14px;
+    width: 350px;
+    padding: 20px 40px;
+    /* margin: 24px 40px; */
+    gap: 24px;
+    z-index: 1;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(15px);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .score-rlt {
