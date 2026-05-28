@@ -95,11 +95,11 @@
     {{/if}}
 
     <div class="song {{i >= overflowIndex ? 'overflow-song' : ''}}">
-        <div class="ill-box">
+        <div class="b20-ill-box">
             <div class="num">
                 <p name="pvis">#{{i + 1}}</p>
             </div>
-            <div class="ill">
+            <div class="b20-ill">
                 {{if song.illustration}}
                 <img src="{{song.illustration}}" alt="ill">
                 {{/if}}
