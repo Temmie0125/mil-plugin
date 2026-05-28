@@ -72,10 +72,11 @@ pnpm install
 | `#mil song <曲名或别名>` | 查询曲目图鉴
 | `#mil alias <曲目>` | 查看现有别名
 | `#mil score <曲目>` | 查看单曲成绩
+| `#mil ill <曲目>` | 查看曲绘
 | `#mil delete` | 删除bot端存档数据
 | `#mil bind` | 授权云存档（需要自行配置cilent_id和cilent_secret）
 | `#mil update` | 更新存档数据
-| `#mil upbind` | 解除授权（不会删除本地存档）
+| `#mil unbind` | 解除授权（不会删除本地存档）
 
 #### **以下为管理功能**
 
