@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width">
     <link rel="shortcut icon" href="#" />
     <link rel="stylesheet" type="text/css" href="{{_res_path}}html/common/common.css" />
-    <link rel="stylesheet" type="text/css" href="{{_res_path}}html/ill/ill.css" />
     <style>
         /* ===== mil-plugin 曲绘水印样式 ===== */
         body {
@@ -38,10 +37,11 @@
             pointer-events: none;
         }
 
-        .wm-brand {
-            font-weight: 700;
-            text-shadow: 0 0 15px #00baff;
-            letter-spacing: 0.05em;
+        .wm-brand-logo {
+            height: 100%;
+            width: auto;
+            flex-shrink: 0;
+            filter: drop-shadow(2px 2px 4px #00000080)
         }
 
         .wm-sep {
@@ -81,7 +81,7 @@
 <div class="ill-wrapper">
     <img class="ill-img" src="{{illustration}}" alt="illustration">
     <div class="watermark">
-        <span class="wm-brand">Milthm</span>
+        <img class="wm-brand-logo" src="{{_res_path}}icon/Milthm.png" alt="Milthm">
         <span class="wm-sep">|</span>
         <div class="wm-illustrator">
             <div class="wm-ill-label">Illustrator:</div>
@@ -138,9 +138,7 @@
             watermark.style.bottom = margin + 'px';
             watermark.style.left = margin + 'px';
             watermark.style.borderRadius = borderRadius + 'px';
-            var brandSpan = watermark.querySelector('.wm-brand');
             var sepSpan = watermark.querySelector('.wm-sep');
-            if (brandSpan) brandSpan.style.fontSize = brandFontSize + 'px';
             if (sepSpan) sepSpan.style.fontSize = brandFontSize + 'px';
 
             var rightContainer = watermark.querySelector('.wm-illustrator');
