@@ -5,38 +5,43 @@
 {{/block}}
 
 {{block 'main'}}
-
-<div class="player-bar">
-    <div class="player-avatar">
-        <img src="{{_res_path}}avatar/{{avatar}}" alt="avatar">
-        {{if starLevel > 0}}
-        <img class="star-overlay" src="{{_res_path}}icon/reality{{starLevel}}.png" alt="star">
-        {{/if}}
-    </div>
-    <div class="player-name">
-        <p name="pvis">{{username}}</p>
-    </div>
-    <div class="player-reality">
-        <div class="rlt-value">{{reality.toFixed(4)}}</div>
-        <div class="rlt-label">Reality</div>
-    </div>
-</div>
-
-<div class="score-container">
-    <div class="score-left">
-        <div class="score-ill">
-            {{if illustration}}
-            <img src="{{illustration}}" alt="ill">
-            {{/if}}
-        </div>
-        <div class="score-player-info">
+<div class="info-bar">    
+    <div class="score-player-info">
             <div class="section-title">Song</div>
             <div style="font-size:22px;font-weight:bold;margin-bottom:4px;" name="pvis">{{songName}}</div>
             <div style="opacity:0.6;">by {{artist}}</div>
             {{if chapter_zh}}
-            <div style="opacity:0.4;font-size:13px;">{{chapter_zh}}</div>
+            <div style="opacity:0.4;font-size:13px;margin-top:4px;">{{chapter_zh}}</div>
             {{/if}}
         </div>
+    <div class="player-bar">
+        <div class="player-avatar">
+            <img src="{{_res_path}}avatar/{{avatar}}" alt="avatar">
+            {{if starLevel > 0}}
+            <img class="star-overlay" src="{{_res_path}}icon/reality{{starLevel}}.png" alt="star">
+            {{/if}}
+        </div>
+        <div class="player-name">
+            <p name="pvis">{{username}}</p>
+        </div>
+        <div class="player-reality">
+            <div class="rlt-value">{{reality.toFixed(4)}}</div>
+            <div class="rlt-label">Reality</div>
+        </div>
+    </div>
+</div>
+<div class="score-container">
+    <div class="score-left">
+        {{if illustration}}
+        <div class="ill-container">
+            <div class="ill">
+                <img src="{{illustration}}" alt="ill">
+            </div>
+            <div class="ill ill-background">
+                <img src="{{illustration}}" alt="ill">
+            </div>
+        </div>
+        {{/if}}
     </div>
 
     <div class="score-right">

@@ -79,6 +79,7 @@
     font-size: 13px;
     margin-left: 12px;
     padding: 1px 8px;
+    margin-bottom: 6px;
     border-radius: 4px;
     color: #fff;
     white-space: nowrap;
@@ -94,8 +95,11 @@
 
 .player-bar {
     margin: 0px;
-    /* width: 100%; */
+    width: 100%;
+    /* max-width: 570px; */
 }
+
+
 
 .score-push.push-98 { background-color: rgba(255, 179, 0, 0.75); }
 .score-push.push-95 { background-color: rgba(66, 165, 245, 0.75); }
