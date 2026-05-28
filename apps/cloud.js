@@ -445,10 +445,14 @@ export class milcloud extends milPluginBase {
                 let localReality = localB20.reality
 
                 if (cloudReality != null && cloudReality > 0) {
-                    let diff = Math.abs(cloudReality - localReality)
+                    let diff = cloudReality - localReality
                     if (diff >= 0.01) {
+                        // 云端高于本地 → 有新在线成绩未同步，触发全量更新
                         needFullUpdate = true
-                        logger.warn(`[mil-cloud] Reality 不一致 (diff=${diff.toFixed(4)})，触发全量更新`)
+                        logger.warn(`[mil-cloud] 云端高于本地 (diff=+${diff.toFixed(4)})，触发全量更新`)
+                    } else if (diff <= -0.01) {
+                        // 本地高于云端 → 可能含离线成绩，已是最全，无需下载
+                        logger.info(`[mil-cloud] 本地高于云端 (diff=${diff.toFixed(4)})，可能含离线成绩，跳过全量更新`)
                     } else {
                         logger.info(`[mil-cloud] Reality 一致 (diff=${diff.toFixed(4)})，跳过全量更新`)
                     }
@@ -477,7 +481,6 @@ export class milcloud extends milPluginBase {
 
             // 5. 全量更新或跳过
             if (needFullUpdate) {
-                
 
                 let saveData
                 try {
@@ -541,22 +544,28 @@ export class milcloud extends milPluginBase {
 
                 // Reality 不一致提示
                 let localB20 = save.getB20WithReality(20, getInfo)
-                if (cloudReality != null && cloudReality > 0 && Math.abs(cloudReality - localB20.reality) >= 0.01) {
+                let finalDiff = cloudReality != null ? cloudReality - localB20.reality : 0
+                if (cloudReality != null && cloudReality > 0 && Math.abs(finalDiff) >= 0.01) {
+                    let reason = finalDiff > 0
+                        ? '云端有新成绩未同步或定数变更'
+                        : '本地可能含离线成绩，或 info.json 定数需更新'
                     await send.send_with_At(e,
-                        `⚠️ 云端 Reality (${cloudReality.toFixed(4)}) 与本地计算值 (${localB20.reality.toFixed(4)}) 不一致\n` +
-                        `差值: ${(cloudReality - localB20.reality).toFixed(4)}\n` +
-                        `可能原因：定数变更或计算公式更新，请留意 info.json 是否需要同步更新`,
+                        `⚠️ 云端 (${cloudReality.toFixed(4)}) 与本地 (${localB20.reality.toFixed(4)}) 不一致\n` +
+                        `差值: ${finalDiff.toFixed(4)} | ${reason}`,
                         true
                     )
                 }
             } else {
-                // 无需全量更新，展示 recent 导入的 diff
                 if (recentUpdateEntry) {
                     let updateImg = await renderUpdateImage(userId, recentUpdateEntry)
                     send.send_with_At(e, updateImg)
                 }
+                let localRlt = save.getB20WithReality(20, getInfo).reality
+                let note = (cloudReality != null && localRlt - cloudReality > 0.01)
+                    ? ' | 本地含离线成绩，已是最全'
+                    : ' | 数据一致'
                 send.send_with_At(e,
-                    `云端 Reality: ${cloudReality?.toFixed(4) || '未知'} | 未触发全量存档下载（节省每日 5 次限额）`,
+                    `云端 Reality: ${cloudReality?.toFixed(4) || '未知'}${note}（未触发全量下载）`,
                     true
                 )
             }
