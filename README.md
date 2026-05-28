@@ -135,6 +135,12 @@ data/
 #### 2.对接云存档
 
 > [!WARNING]
+> 由于Milkoud只有在线成绩能上传，且4.0以前的成绩不会被上传，使用云功能时，假如你的存档内有：
+> - 旧版成绩
+> - 离线游玩成绩
+> 将不可避免地产生本地和云端成绩不一致的情况（尤其是游戏内和云端的Reality）。出现这种情况，建议将未出现在云端的成绩重新打一遍就行。
+
+> [!WARNING]
 > 云存档功能需要自行配置以下任一内容：
 > - [Re Nya Profiler API](https://renya.mhtl.im/apikey)的API Key
 > - Milkloud OIDC的Cilent_id和Cilent_secret，可自行前往申请获取，此处不提供获取方式. 注意，如果你一定需要这一项配置，请务必申请**Cilent Auth**的认证类型，**无需回调地址**，Bot会自动轮询。
