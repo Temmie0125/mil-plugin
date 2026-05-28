@@ -50,10 +50,10 @@ class GetInfo {
     /**
      * 获取头像文件名列表
      */
-    async getAvatar() {
+    getAvatar() {
         let avatarPath = `${Plugin_Path}/resources/avatar/`;
         try {
-            const files = fs.readdir(avatarPath);
+            const files = fs.readdirSync(avatarPath);
             // 过滤出 .png 结尾的文件（不区分大小写）
             const pngFiles = files.filter(file => path.extname(file).toLowerCase() === '.png');
             return pngFiles;
