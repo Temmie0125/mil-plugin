@@ -107,7 +107,6 @@ class GetInfo {
 
     /**
      * 加载默认别名（phi 风格 nicklist.yaml：songKey → [别名列表]）
-     * 与 info.json 自动生成的别名（tags/latinTitle/artist 等）合并
      */
     loadDefaultNicklist() {
         let nicklistPath = `${Plugin_Path}/resources/info/nicklist.yaml`
