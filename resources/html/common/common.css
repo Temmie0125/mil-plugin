@@ -375,8 +375,10 @@ body {
 }
 
 .score-left {
-    width: 350px;
+    /* width: 350px; */
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
 }
 
 .score-ill {
@@ -398,7 +400,7 @@ body {
     padding: 16px 20px;
     /* background: rgba(0,0,0,0.3); */
     border-radius: 14px;
-    width: 350px;
+    width: 520px;
     padding: 20px 40px;
     /* margin: 24px 40px; */
     gap: 24px;
@@ -422,6 +424,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    width: 520px;
 }
 
 .score-dif-card {
