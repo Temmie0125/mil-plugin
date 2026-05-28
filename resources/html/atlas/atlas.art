@@ -8,11 +8,11 @@
 
 <div class="atlas-container">
     {{if illustration}}
-    <div class="atlas-ill-container">
-        <div class="atlas-ill">
+    <div class="ill-container">
+        <div class="ill">
             <img src="{{illustration}}" alt="ill">
         </div>
-        <div class="atlas-ill ill-background">
+        <div class="ill ill-background">
             <img src="{{illustration}}" alt="ill">
         </div>
     </div>

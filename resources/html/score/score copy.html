@@ -1,0 +1,98 @@
+{<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <link rel="shortcut icon" href="#" />
+    <link rel="stylesheet" type="text/css" href="./score.css" />
+    {{block 'css'}}{{/block}}
+    <title>mil-plugin</title>
+</head>
+<body class="elem-hydro default-mode score" {{@sys.scale}}>
+    <div class="background">
+        <img src="../../origin_ill/ill/190 - MMQX.png" alt="bg">
+    </div>
+    <script>var _res_path = "../../" ;</script>
+    <script src="../../html/common/theme/star/star.js"></script>
+
+<div class="info-bar">
+    <div class="score-player-info">
+        <div class="section-title">Song</div>
+        <div style="font-size:22px;font-weight:bold;margin-bottom:4px;" name="pvis">198</div>
+        <div style="opacity:0.6;">by gggu</div>
+        <div style="opacity:0.4;font-size:13px;">咕咕精选集</div>
+    </div>
+    <div class="player-bar">
+        <div class="player-avatar">
+            <img src="../../avatar/avatar_luvia.png" alt="avatar">
+            <img class="star-overlay" src="../../icon/reality2.png" alt="star">
+        </div>
+        <div class="player-name">
+            <p name="pvis">Temmie_Official</p>
+        </div>
+        <div class="player-reality">
+            <div class="rlt-value">9.9999</div>
+            <div class="rlt-label">Reality</div>
+        </div>
+    </div>
+</div>
+<div class="score-container">
+    <div class="score-left">
+        <div class="score-ill">
+            <img src="../../origin_ill/ill/190 - MMQX.png" alt="ill">
+        </div>
+    </div>
+    <div class="score-right">
+        <div class="score-dif-card" style="position:relative;">
+            <div class="score-dif-header">
+                <div>
+                    <span class="dif-badge dif-Drizzle">DZ</span>
+                    <span style="margin-left:8px;opacity:0.5;">8.0</span>
+                </div>
+            </div>
+            <div style="text-align:center;opacity:0.35;padding:10px 0;font-size:18px;">NOT PLAYED</div>
+        </div>
+        <div class="score-dif-card" style="position:relative;">
+            <div class="score-dif-header">
+                <div>
+                    <span class="dif-badge dif-Clear">CL</span>
+                    <span style="margin-left:8px;opacity:0.5;">8.0</span>
+                </div>
+                <div class="score-grade-badge">
+                    <img src="../../icon/APSS.png" alt="ggu">
+                </div>
+            </div>
+            <div class="score-dif-value">
+                9187654
+                <span class="score-push push-fail">>> {{data.pushText}}</span>
+            </div>
+            <div class="score-dif-detail">
+                <span>Acc: 99.988%</span>
+                <span>Reality: 9.99</span>
+                <span>Combo: 999</span>
+            </div>
+            <div class="score-judge">
+                <span>Exact: 99</span>
+                <span>Perfect: 99</span>
+                <span>Good: 99</span>
+                <span>Bad: 99</span>
+                <span>Miss: 99</span>
+            </div>
+            <div style="font-size:12px;opacity:0.4;margin-top:6px;">Played: 2025.02.0</div>
+        </div>
+        <div class="score-dif-card">
+            <div style="text-align:center;opacity:0.5;padding:30px;">暂无该曲目的成绩记录</div>
+        </div>
+    </div>
+</div>
+
+<div class="createdbox">
+    <div class="mil-plugin">
+        <p>mil-plugin</p>
+    </div>
+    <div class="ver">
+        <p>{{version}}</p>
+    </div>
+</div>
+
+{{/block}}
