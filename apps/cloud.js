@@ -69,7 +69,7 @@ export class milcloud extends milPluginBase {
         } else if (nyaApiKey) {
             return await this._bindNya(e)
         } else {
-            send.send_with_At(e, '❌ 尚未配置云存档接口！\n请联系 Bot 主人在 Guoba 面板中填写：\n• Milthm 云存档的 client_id 和 client_secret（推荐）\n• 或 Re Nya Profiler 的 API Key')
+            send.send_with_At(e, '尚未配置云存档接口！\n请联系 Bot 主人在 Guoba 面板中填写：\n• Milthm 云存档的 client_id 和 client_secret（推荐）\n• 或 Re Nya Profiler 的 API Key')
             return true
         }
     }
@@ -94,7 +94,7 @@ export class milcloud extends milPluginBase {
         if (auth.isBound()) {
             let isValid = await auth.ensureValidToken()
             if (isValid) {
-                send.send_with_At(e, `✅ 你已授权 Milthm 云存档，Token 自动续期中，无需重复授权\n如需更换账号，请先使用 /unbind 解除授权`)
+                send.send_with_At(e, `你已授权 Milthm 云存档，Token 自动续期中，无需重复授权\n如需更换账号，请先使用 /unbind 解除授权`)
                 return true
             }
             // token 已过期，清除旧 token 并继续新授权流程
@@ -108,18 +108,17 @@ export class milcloud extends milPluginBase {
             deviceAuthInfo = await auth.startDeviceAuth()
         } catch (err) {
             logger.error('[mil-cloud] 设备授权发起失败:', err)
-            send.send_with_At(e, `❌ 发起设备授权失败：${err.message}`)
+            send.send_with_At(e, `发起设备授权失败：${err.message}`)
             return true
         }
 
         // 发送授权链接给用户，120 秒后自动撤回（授权成功时提前撤回）
         let authMsg = await send.send_with_At(e,
             `Milthm 云存档授权\n` +
-            `请点击下方链接完成授权：\n${deviceAuthInfo.verification_uri_complete}\n\n` +
-            `或手动输入用户码: ${deviceAuthInfo.user_code}\n` +
-            `授权码有效期: ${deviceAuthInfo.expires_in} 秒\n\n` +
-            `⚠️ 链接将在授权完成后撤回，请尽快完成授权\n` +
-            `⚠️ 3 分钟内未完成授权将自动取消`,
+            `请在浏览器打开下方链接完成授权：\n${deviceAuthInfo.verification_uri_complete}\n` +
+            `或手动输入用户码: ${deviceAuthInfo.user_code}\n\n` +
+            `链接将在授权完成后撤回，请尽快完成授权\n` +
+            `3 分钟内未完成授权将自动取消`,
             false,
             { recallMsg: 120 }
         )
@@ -153,7 +152,7 @@ export class milcloud extends milPluginBase {
         // 检查是否已授权
         if (nyaAuth.isBound()) {
             send.send_with_At(e,
-                `✅ 你已授权 Re Nya Profiler 查分器\n` +
+                `你已授权 Re Nya Profiler 查分器\n` +
                 `当前绑定用户名: ${nyaAuth.getUsername()}\n` +
                 `如需更换账号，请先使用 /unbind 解除授权`
             )
@@ -166,16 +165,16 @@ export class milcloud extends milPluginBase {
             authInfo = await nyaAuth.generateAuthUrl()
         } catch (err) {
             logger.error('[nya-profiler] 生成授权链接失败:', err)
-            send.send_with_At(e, `❌ 生成授权链接失败：${err.message}`)
+            send.send_with_At(e, `生成授权链接失败：${err.message}`)
             return true
         }
 
         // 发送授权链接给用户
         let authMsg = await send.send_with_At(e,
             `Re Nya Profiler 查分器授权\n` +
-            `请点击下方链接完成授权：\n${authInfo.url}\n\n` +
-            `⚠️ 链接将在授权完成后撤回，请尽快完成授权\n` +
-            `⚠️ 2 分钟内未完成授权将自动取消`,
+            `请在浏览器打开下方链接完成授权：\n${authInfo.url}\n\n` +
+            `链接将在授权完成后撤回，请尽快完成授权\n` +
+            `2 分钟内未完成授权将自动取消`,
             false,
             { recallMsg: 120 }
         )
@@ -206,11 +205,11 @@ export class milcloud extends milPluginBase {
             )
         } catch (err) {
             if (err.message.includes('超时')) {
-                send.send_with_At(e, `⌛ 授权超时自动取消，请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
+                send.send_with_At(e, `授权超时自动取消，请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
             } else if (err.message.includes('拒绝')) {
-                send.send_with_At(e, '❌ 授权被拒绝，操作已取消')
+                send.send_with_At(e, '授权被拒绝，操作已取消')
             } else {
-                send.send_with_At(e, `❌ 授权失败：${err.message}`)
+                send.send_with_At(e, `授权失败：${err.message}`)
             }
         } finally {
             bindingUsers.delete(userId)
@@ -243,7 +242,7 @@ export class milcloud extends milPluginBase {
                 result = await auth.pollForToken(device_code)
             } catch (err) {
                 logger.error('[mil-cloud] 轮询异常:', err)
-                send.send_with_At(e, '❌ 轮询授权状态时发生错误，请稍后重试')
+                send.send_with_At(e, '轮询授权状态时发生错误，请稍后重试')
                 return
             }
 
@@ -284,27 +283,27 @@ export class milcloud extends milPluginBase {
             }
 
             if (result.error === 'denied') {
-                send.send_with_At(e, '❌ 授权被拒绝，操作已取消')
+                send.send_with_At(e, '授权被拒绝，操作已取消')
                 return
             }
 
             if (result.error === 'expired') {
-                send.send_with_At(e, `⌛ 授权码已过期，请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
+                send.send_with_At(e, `授权码已过期，请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
                 return
             }
 
             // 其他错误
             if (slowDownCount > 2) {
-                send.send_with_At(e, `⚠️ 授权轮询出现异常，请检查链接是否已授权。如需帮助请联系 Bot 主人`)
+                send.send_with_At(e, `授权轮询出现异常，请检查链接是否已授权。如需帮助请联系 Bot 主人`)
                 return
             }
         }
 
         // 超时
         if (wasCancelled || timeoutSec) {
-            send.send_with_At(e, `⌛ 授权已超时自动取消（${timeoutSec || effectiveExpire} 秒内未完成），请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
+            send.send_with_At(e, `授权已超时自动取消（${timeoutSec || effectiveExpire} 秒内未完成），请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
         } else {
-            send.send_with_At(e, `⌛ 授权等待超时，请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
+            send.send_with_At(e, `授权等待超时，请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
         }
     }
 
@@ -320,7 +319,7 @@ export class milcloud extends milPluginBase {
         } else if (nyaApiKey) {
             return await this._updateNya(e)
         } else {
-            send.send_with_At(e, '❌ 尚未配置云存档接口！\n请联系 Bot 主人在 Guoba 面板中填写相关配置')
+            send.send_with_At(e, '尚未配置云存档接口！\n请联系 Bot 主人在 Guoba 面板中填写相关配置')
             return true
         }
     }
@@ -335,7 +334,7 @@ export class milcloud extends milPluginBase {
         let clientId = this._getClientId()
         let clientSecret = this._getClientSecret()
         if (!clientId) {
-            send.send_with_At(e, '❌ 尚未配置 client_id，请联系 Bot 主人在 Guoba 面板中填写')
+            send.send_with_At(e, '尚未配置 client_id，请联系 Bot 主人在 Guoba 面板中填写')
             return true
         }
 
@@ -348,7 +347,7 @@ export class milcloud extends milPluginBase {
         let auth = new MilthmCloudAuth(userId, clientId, clientSecret)
 
         if (!auth.isBound()) {
-            send.send_with_At(e, `❌ 你还没有授权 Milthm 云存档！\n请先使用 /${Config.getUserCfg('config', 'cmdhead')} bind 进行授权`)
+            send.send_with_At(e, `你还没有授权 Milthm 云存档！\n请先使用 /${Config.getUserCfg('config', 'cmdhead')} bind 进行授权`)
             return true
         }
 
@@ -363,7 +362,7 @@ export class milcloud extends milPluginBase {
                 saveInfo = await auth.fetchSaveInfo()
             } catch (err) {
                 if (err.message.includes('未授权') || err.message.includes('token 已失效')) {
-                    send.send_with_At(e, `❌ 临时授权已过期，请重新 /${cmdHead} bind 授权`)
+                    send.send_with_At(e, `临时授权已过期，请重新 /${cmdHead} bind 授权`)
                     return true
                 }
                 throw err
@@ -375,7 +374,7 @@ export class milcloud extends milPluginBase {
                 saveData = await auth.fetchSaveData()
             } catch (err) {
                 if (err.message.includes('未授权') || err.message.includes('token 已失效')) {
-                    send.send_with_At(e, `❌ 临时授权已过期，请重新 /${cmdHead} bind 授权`)
+                    send.send_with_At(e, `临时授权已过期，请重新 /${cmdHead} bind 授权`)
                     return true
                 }
                 throw err
@@ -409,11 +408,15 @@ export class milcloud extends milPluginBase {
                 let updateImg = await renderUpdateImage(userId, result.updateEntry)
                 send.send_with_At(e, updateImg)
             } else {
-                send.send_with_At(e, `❌ 存档导入失败：${result.msg}`)
+                send.send_with_At(e, `存档导入失败：${result.msg}`)
             }
         } catch (err) {
             logger.error('[mil-cloud] 云端更新失败:', err)
-            send.send_with_At(e, `❌ 云端更新失败：${err.message}`)
+            if (err.message.includes('GameSaveEmptyError')) {
+                send.send_with_At(e, '云端没有找到你的存档数据哦！\n请在游戏内上传云存档后再使用更新功能~')
+            } else {
+                send.send_with_At(e, `云端更新失败：${err.message}`)
+            }
         } finally {
             updatingUsers.delete(userId)
         }
@@ -429,7 +432,7 @@ export class milcloud extends milPluginBase {
 
         let nyaApiKey = this._getNyaApiKey()
         if (!nyaApiKey) {
-            send.send_with_At(e, '❌ 尚未配置 Nya Profiler API Key')
+            send.send_with_At(e, '尚未配置 Nya Profiler API Key')
             return true
         }
 
@@ -442,7 +445,7 @@ export class milcloud extends milPluginBase {
         let nyaAuth = new NyaProfilerAuth(userId, nyaApiKey)
 
         if (!nyaAuth.isBound()) {
-            send.send_with_At(e, `❌ 你还没有授权 Re Nya Profiler！\n请先使用 /${Config.getUserCfg('config', 'cmdhead')} bind 进行授权`)
+            send.send_with_At(e, `你还没有授权 Re Nya Profiler！\n请先使用 /${Config.getUserCfg('config', 'cmdhead')} bind 进行授权`)
             return true
         }
 
@@ -474,7 +477,7 @@ export class milcloud extends milPluginBase {
                 } catch (err) {
                     if (err.message.includes('401') || err.message.includes('needAuth')) {
                         nyaAuth.clearToken()
-                        send.send_with_At(e, `❌ 授权已过期，请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
+                        send.send_with_At(e, `授权已过期，请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
                         return true
                     }
                     // API 失败时尝试使用缓存兜底
@@ -490,7 +493,7 @@ export class milcloud extends milPluginBase {
             }
 
             if (!queryResult) {
-                send.send_with_At(e, '❌ 暂无数据，请先完成一次 API 查询')
+                send.send_with_At(e, '暂无数据，请先完成一次 API 查询')
                 return true
             }
 
@@ -502,7 +505,7 @@ export class milcloud extends milPluginBase {
             let importResult = save.importFromNyaProfiler(queryResult, getInfo)
 
             if (!importResult.success) {
-                send.send_with_At(e, `❌ 数据导入失败：${importResult.msg}`)
+                send.send_with_At(e, `数据导入失败：${importResult.msg}`)
                 return true
             }
 
@@ -538,7 +541,7 @@ export class milcloud extends milPluginBase {
 
         } catch (err) {
             logger.error('[nya-profiler] 更新失败:', err)
-            send.send_with_At(e, `❌ 查分数据更新失败：${err.message}`)
+            send.send_with_At(e, `查分数据更新失败：${err.message}`)
         } finally {
             updatingUsers.delete(userId)
         }
