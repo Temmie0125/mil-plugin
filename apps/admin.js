@@ -12,6 +12,7 @@ import logger from '../components/Logger.js'
 import { Restart } from '../../other/restart.js'
 import fs from 'node:fs'
 import send from '../model/send.js'
+import { makeForwardMsg } from '../components/common.js'
 
 const require = createRequire(import.meta.url)
 const { exec } = require('child_process')
@@ -319,7 +320,8 @@ export class miladmin extends milPluginBase {
             log.reverse()
             log.unshift(`mil-plugin 更新日志，共 ${log.length} 条：`)
             log.push(`更多详细信息，请前往github查看\nhttps://github.com/Temmie0125/mil-plugin`)
-            send.send_with_At(this.e, log.join('\n'))
+            const replyMsg = await makeForwardMsg(this.e, log, "mil-plugin 更新日志")
+            send.send_with_At(this.e, replyMsg)
         }
         return ifRestart
     }
