@@ -64,15 +64,15 @@
             <div class="judge-section">
                 <div class="judge-row">
                     <div class="judge-label perfect-label">Perfect</div>
-                    <div class="judge-value">{{exact + perfect}} <span class="judge-sub">(Exact: {{exact}} / Perfect: {{perfect}})</span></div>
+                    <div class="judge-value">{{exact + perfect}} <span class="judge-sub">({{exact}} / {{perfect}})</span></div>
                 </div>
                 <div class="judge-row">
                     <div class="judge-label good-label">Good</div>
-                    <div class="judge-value">{{great + good}} <span class="judge-sub">(Great: {{great}} / Good: {{good}})</span></div>
+                    <div class="judge-value">{{great + good}} <span class="judge-sub">({{great}} / {{good}})</span></div>
                 </div>
                 <div class="judge-row">
                     <div class="judge-label bad-label">Bad / Miss</div>
-                    <div class="judge-value">{{bad}} <span class="judge-sub">(Miss: {{miss}})</span></div>
+                    <div class="judge-value">{{bad}} / {{miss}}</div>
                 </div>
             </div>
 
