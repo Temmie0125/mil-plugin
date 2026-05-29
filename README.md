@@ -78,6 +78,9 @@ pnpm install
 | `#mil bind` | 授权云存档（需要自行配置cilent_id和cilent_secret）
 | `#mil update` | 更新存档数据
 | `#mil unbind` | 解除授权（不会删除本地存档）
+| `#mil guess` | 猜曲绘，回答可以直接发送
+| `#mil letter` | 开字母，`#open A`翻开字母，`#nx XXX`猜测
+
 
 #### **以下为管理功能**
 

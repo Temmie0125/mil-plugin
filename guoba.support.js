@@ -210,6 +210,138 @@ export function supportGuoba() {
                         placeholder: '请输入缓存有效期（1~24小时）',
                     },
                 },
+                {
+                    label: '',
+                    component: 'Divider'
+                },
+                {
+                    label: '娱乐功能设置',
+                    component: 'SOFT_GROUP_BEGIN'
+                },
+                {
+                    label: '开字母设置',
+                    component: 'Divider'
+                },
+                {
+                    field: 'LetterNum',
+                    label: '曲目数量',
+                    bottomHelpMessage: '每局开字母抽取的曲目数量',
+                    component: 'InputNumber',
+                    required: true,
+                    componentProps: {
+                        min: 5,
+                        max: 12,
+                        placeholder: '请输入曲目数量（5~12）',
+                    },
+                },
+                {
+                    field: 'LetterTimeLength',
+                    label: '单局时长（秒）',
+                    bottomHelpMessage: '超时后无人猜对将自动结束并公布答案',
+                    component: 'InputNumber',
+                    required: true,
+                    componentProps: {
+                        min: 60,
+                        max: 1200,
+                        placeholder: '请输入秒数',
+                    },
+                },
+                {
+                    field: 'LetterRevealCd',
+                    label: '翻字母冷却（秒）',
+                    bottomHelpMessage: '群内翻开字母的全局冷却时间',
+                    component: 'InputNumber',
+                    required: true,
+                    componentProps: {
+                        min: 0,
+                        max: 60,
+                        placeholder: '请输入秒数',
+                    },
+                },
+                {
+                    field: 'LetterGuessCd',
+                    label: '猜测冷却（秒）',
+                    bottomHelpMessage: '群内猜测的全局冷却时间',
+                    component: 'InputNumber',
+                    required: true,
+                    componentProps: {
+                        min: 0,
+                        max: 30,
+                        placeholder: '请输入秒数',
+                    },
+                },
+                {
+                    field: 'LetterTipCd',
+                    label: '提示冷却（秒）',
+                    bottomHelpMessage: '群内使用提示的全局冷却时间',
+                    component: 'InputNumber',
+                    required: true,
+                    componentProps: {
+                        min: 0,
+                        max: 60,
+                        placeholder: '请输入秒数',
+                    },
+                },
+                {
+                    field: 'LetterIllustration',
+                    label: '展示曲绘',
+                    bottomHelpMessage: '出于版权考虑，仅支持水印版或不展示',
+                    component: 'Select',
+                    required: true,
+                    componentProps: {
+                        options: [
+                            { label: '水印版', value: '水印版' },
+                            { label: '不展示', value: '不展示' },
+                        ],
+                    },
+                },
+                {
+                    field: 'LetterTitleMode',
+                    label: '曲目标题模式',
+                    bottomHelpMessage: '影响开字母中隐藏/显示的曲目标题。默认优先中文，拉丁文优先更适合开字母玩法',
+                    component: 'Select',
+                    required: true,
+                    componentProps: {
+                        options: [
+                            { label: '默认（中文优先）', value: '默认' },
+                            { label: '拉丁文优先', value: '拉丁文优先' },
+                        ],
+                    },
+                },
+                {
+                    label: '猜曲绘设置',
+                    component: 'Divider'
+                },
+                {
+                    field: 'GuessTipCd',
+                    label: '提示间隔（秒）',
+                    bottomHelpMessage: '每隔多少秒给出一次进一步提示（区域扩大/模糊降低/文字提示/全局视野）',
+                    component: 'InputNumber',
+                    required: true,
+                    componentProps: {
+                        min: 5,
+                        max: 60,
+                        placeholder: '请输入秒数',
+                    },
+                },
+                {
+                    field: 'GuessTipRecall',
+                    label: '提示自动撤回',
+                    bottomHelpMessage: '每次新提示发出后是否自动撤回上一张图',
+                    component: 'Switch',
+                },
+                {
+                    field: 'GuessMaxTime',
+                    label: '单局最大时长（秒）',
+                    bottomHelpMessage: '超时后无人猜对将自动结束并公布答案',
+                    component: 'InputNumber',
+                    required: true,
+                    componentProps: {
+                        min: 60,
+                        max: 600,
+                        placeholder: '请输入秒数',
+                    },
+                },
             ],
             getConfigData() {
                 const defset = Config.getdefSet('config')

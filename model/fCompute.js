@@ -8,6 +8,53 @@ const LevelAbbr = { 'Drizzle': 'DZ', 'Sprinkle': 'SK', 'Cloudburst': 'CB', 'Clea
 const MAX_DIFFICULTY = 16.0
 
 /**
+ * Fisher-Yates 洗牌
+ * @template T
+ * @param {T[]} arr 
+ * @returns {T[]}
+ */
+function randArray(arr) {
+    let a = [...arr]
+    for (let i = a.length - 1; i > 0; --i) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]]
+    }
+    return a
+}
+
+/**
+ * 生成 [min, max) 之间的随机浮点数
+ * @param {number} min 
+ * @param {number} max 
+ * @param {number} [precision=6] 
+ * @returns 
+ */
+function randFloatBetween(min, max, precision = 6) {
+    return Number((Math.random() * (max - min) + min).toFixed(precision))
+}
+
+/**
+ * 从数组中随机取一个元素；支持权重数组 [[value, weight], ...]
+ * @template T
+ * @param {T[] | [T, number][]} arr 
+ * @returns {T}
+ */
+function randFromArray(arr) {
+    if (!arr || !arr.length) return undefined
+    if (Array.isArray(arr[0]) && typeof arr[0][1] === 'number') {
+        let total = arr.reduce((s, [, w]) => s + w, 0)
+        let r = Math.random() * total
+        let acc = 0
+        for (let [v, w] of arr) {
+            acc += w
+            if (r <= acc) return v
+        }
+        return arr[arr.length - 1][0]
+    }
+    return arr[Math.floor(Math.random() * arr.length)]
+}
+
+/**
  * 根据分数计算评级 (Milthm rating)
  * @param {number} score 分数 0~1010000
  * @returns {string} 评级: R, M, SS, S, A, B, C, F
@@ -80,6 +127,9 @@ export default {
     getScoreGrade,
     getGrade,
     getIconPath,
+    randArray,
+    randFloatBetween,
+    randFromArray,
 
     objectKeys(obj) {
         if (!obj) return []

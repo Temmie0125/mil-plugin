@@ -864,6 +864,13 @@ export class miluser extends milPluginBase {
                     ]
                 },
                 {
+                    group: '娱乐功能',
+                    list: [
+                        { title: `/${cmd} guess`, desc: '猜曲绘游戏，回答可以直接发送' },
+                        { title: `/${cmd} letter`, desc: '开字母游戏，用#open开字母，#n猜测答案' },
+                    ]
+                },
+                {
                     group: '其他',
                     list: [
                         { title: `/${cmd} tips`, desc: '随机Tips' }

@@ -114,11 +114,24 @@ export default {
     },
 
     /**
-     * 最近游玩记录
+     * 渲染最近游玩记录
      */
     async recent(data) {
         return enqueue(async () => {
             let buff = await puppeteer.screenshot('recent/recent', data)
+            if (!buff) return '图片生成失败QAQ'
+            return segment.image(buff)
+        })
+    },
+
+    /**
+     * 渲染猜曲绘图片
+     * @param {object} data - { illustration, width, height, x, y, blur, imgW, imgH, style, ans, filterStyle, ... }
+     * @returns {Promise<any>}
+     */
+    async guess(data) {
+        return enqueue(async () => {
+            let buff = await puppeteer.screenshot('guess/guess', data)
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })

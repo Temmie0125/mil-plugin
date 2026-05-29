@@ -57,3 +57,37 @@ nya_api_key: ""
 #  Nya Profiler 缓存有效期（小时），最小 1 小时，默认 2 小时
 #  缓存有效期内重复请求将提示用户等待，避免浪费每日下载次数（上限5次/天）
 nyaCacheTTL: 2
+
+#  ************ 【猜曲游戏】 *************
+
+#  【开字母（Letter Game）设置】
+#  开字母每局曲目数量，可选 5~12
+LetterNum: 8
+
+#  开字母单局时长 (秒)
+LetterTimeLength: 300
+
+#  开字母翻字母全局冷却时间 (秒)
+LetterRevealCd: 5
+
+#  开字母猜测全局冷却时间 (秒)
+LetterGuessCd: 3
+
+#  开字母使用提示全局冷却时间 (秒)
+LetterTipCd: 15
+
+#  开字母猜对后曲绘展示方式: "水印版" / "不展示"
+LetterIllustration: "水印版"
+
+#  开字母曲目标题显示模式: "默认"（优先中文）/ "拉丁文优先"（优先拉丁字母标题）
+LetterTitleMode: "默认"
+
+#  【猜曲绘（Guess Illustration）设置】
+#  猜曲绘提示间隔 (秒)
+GuessTipCd: 15
+
+#  猜曲绘提示是否撤回上一张图 (true/false)
+GuessTipRecall: true
+
+#  猜曲绘单局最大时长 (秒)
+GuessMaxTime: 270
