@@ -160,6 +160,55 @@ data/
 >    - API有**并发限制**和**每日请求上限**，每个用户每天最多请求存档**5次**。本插件已经做了缓存机制，可自行按需配置缓存有效期，并合理控制请求频率。
 >    - API只能查询Best20以及Overflow2成绩，以及常规谱面完成的统计情况。如果你需要完整的数据，请使用本地导入或者自行申请Milkloud的OIDC client.
 
+### 部分功能效果图
+
+感谢[phi-plugin](https://github.com/catrong/phi-plugin)提供的设计灵感
+
+#### 帮助菜单
+
+<div align=left>
+    <img src=".\resources\doc\help.jpg" width=30%>
+</div>
+
+#### update和b20
+
+<div align=left>
+    <img src=".\resources\doc\update.jpg" width=30%>
+    <img src=".\resources\doc\b20.jpg" width=30%>
+</div>
+
+#### 曲目图鉴和单曲成绩
+
+<div align=left>
+    <img src=".\resources\doc\song.jpg" width=30%>
+    <img src=".\resources\doc\score.jpg" width=30%>
+</div>
+
+#### 最近游玩
+
+<div align=left>
+    <img src=".\resources\doc\recent.jpg" width=30%>
+</div>
+
+### 贡献者
+
+感谢以下贡献者对本项目做出的贡献
+
+<a href="https://github.com/Temmie0125/mil-plugin/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Temmie0125/mil-plugin" />
+</a>
+
+![Alt](https://repobeats.axiom.co/api/embed/1609687020737426f517b0df54f246b1944d2610.svg "Repobeats analytics image")
+
+### Star History
+
+<a href="https://www.star-history.com/?repos=Temmie0125%2Fmil-plugin&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Temmie0125/mil-plugin&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Temmie0125/mil-plugin&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Temmie0125/mil-plugin&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ### 免责声明
 
@@ -172,3 +221,4 @@ data/
 - [milthm-calculator-web](https://github.com/mkzi-nya/milthm-calculator-web)
 - [phi-plugin](https://github.com/catrong/phi-plugin)
 - [别名提案申请表](https://www.kdocs.cn/wo/sl/v12VZ1RD)
+- [Hikari-Bot官群（入群答案：Temmie_2004）](https://qm.qq.com/q/aD1ruPuY5G)
