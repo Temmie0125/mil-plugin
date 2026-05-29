@@ -778,7 +778,7 @@ export default class SaveManager {
                 let existing = this.scores[idx]
 
                 // Rank 是权威 B20，分数更高时全量覆盖
-                if (rankEntry.score > existing.score) {
+                if (rankEntry.score >= existing.score) {
                     existing.score = rankEntry.score
                     existing.score_accuracy = rankEntry.score_accuracy ?? existing.score_accuracy
                     // 同步更新评级
