@@ -50,7 +50,7 @@
             <div class="recent-header">
                 <div>
                     <span class="dif-badge dif-{{level}}">{{levelAbbr}}</span>
-                    <span class="dif-value">{{difficulty.toFixed(1)}}&ensp; >> {{reality.toFixed(4)}}</span>
+                    <span class="dif-value">{{difficulty.toFixed(1)}}&ensp; >> {{songreality.toFixed(4)}}</span>
                 </div>
                 {{if gradeIcon}}
                 <div class="recent-grade">

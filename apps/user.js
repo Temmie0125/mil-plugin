@@ -815,7 +815,7 @@ export class miluser extends milPluginBase {
             played_at: playedAt,
             background: illustration,
             version: Version.ver,
-            reality: record.reality
+            songreality: record.reality
         }))
         return true
     }
