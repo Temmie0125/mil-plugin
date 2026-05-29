@@ -776,8 +776,14 @@ export class miluser extends milPluginBase {
             }
         }
 
-        // 评级图标
+        // 评级图标（使用真实 combo）
         let chartInfo = { combo: 1 }
+        if (songKey) {
+            let info = getInfo.info(songKey)
+            if (info && info.chart[diffLevel]) {
+                chartInfo = info.chart[diffLevel]
+            }
+        }
         let gradeInfo = getGradeForRecord(record, chartInfo)
         gradeIcon = gradeInfo.iconName
 
@@ -808,7 +814,8 @@ export class miluser extends milPluginBase {
             miss: record.score_miss_count || 0,
             played_at: playedAt,
             background: illustration,
-            version: Version.ver
+            version: Version.ver,
+            reality: record.reality
         }))
         return true
     }

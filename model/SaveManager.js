@@ -907,6 +907,8 @@ export default class SaveManager {
                     played_at: record.played_at || null,
                     game_version: record.game_version || 'v5.0',
                     grade: record.grade || '',
+                    _source: 'cloud_recent',
+                    _achievedStatus: ((record.score_bad_count || 0) === 0 && (record.score_miss_count || 0) === 0) ? [4] : [],
                     modifiers: modifiers,
                     reality: record.reality || 0
                 }
