@@ -135,10 +135,14 @@ export class milcloud extends milPluginBase {
         )
 
         // 开始轮询（3 分钟超时自动取消）
+        let timeoutSec = 180
         bindingUsers.add(userId)
+        // 兜底超时清理：确保即使异常导致 finally 未执行，用户也不会被永久锁定
+        let cleanupTimer = setTimeout(() => bindingUsers.delete(userId), (timeoutSec + 30) * 1000)
         try {
-            await this._pollLoop(e, auth, deviceAuthInfo, { timeoutSec: 180, authMessage: authMsg })
+            await this._pollLoop(e, auth, deviceAuthInfo, { timeoutSec, authMessage: authMsg })
         } finally {
+            clearTimeout(cleanupTimer)
             bindingUsers.delete(userId)
         }
 
@@ -191,9 +195,12 @@ export class milcloud extends milPluginBase {
         )
 
         // 开始轮询（2 分钟超时）
+        let nyaTimeoutSec = 120
         bindingUsers.add(userId)
+        // 兜底超时清理：确保即使异常导致 finally 未执行，用户也不会被永久锁定
+        let nyaCleanupTimer = setTimeout(() => bindingUsers.delete(userId), (nyaTimeoutSec + 30) * 1000)
         try {
-            let username = await nyaAuth.pollAuthLoop(authInfo.uuid, 120, 3)
+            let username = await nyaAuth.pollAuthLoop(authInfo.uuid, nyaTimeoutSec, 3)
 
             // 撤回授权链接消息
             if (authMsg?.message_id) {
@@ -223,6 +230,7 @@ export class milcloud extends milPluginBase {
                 send.send_with_At(e, `授权失败：${err.message}`)
             }
         } finally {
+            clearTimeout(nyaCleanupTimer)
             bindingUsers.delete(userId)
         }
 
