@@ -1042,4 +1042,95 @@ export default class SaveManager {
             return false
         }
     }
+
+    /**
+     * 构建云端 B20（基于 _cloudReality 字段）
+     * @param {object} getInfo
+     * @returns {{ scores: object[], reality: number }}
+     */
+    getCloudB20(getInfo) {
+        this.ensureLoaded()
+
+        let scored = this.scores
+            .filter(s => s._cloudReality != null)
+            .map(s => {
+                let difficulty = this.getChartDifficulty(s.chart_id, getInfo)
+                return {
+                    chart_id: s.chart_id,
+                    score: s.score,
+                    reality: s._cloudReality,
+                    difficulty,
+                }
+            })
+            .sort((a, b) => b.reality - a.reality)
+
+        let top20 = scored.slice(0, 20)
+        let reality = top20.length > 0
+            ? top20.reduce((sum, s) => sum + s.reality, 0) / top20.length
+            : 0
+
+        return { scores: top20, reality }
+    }
+
+    /**
+     * 比较云端 B20 与存档 B20，生成差异文本
+     * @param {object} getInfo
+     * @returns {string[]|null} 差异消息数组（每条曲目一行），无差异时返回 null
+     */
+    getB20DiffText(getInfo) {
+        let saveB20 = this.getB20WithReality(20, getInfo)
+        let cloudB20 = this.getCloudB20(getInfo)
+
+        if (cloudB20.scores.length === 0) {
+            return null  // 无云端数据，无法对比
+        }
+
+        // 构建云端 chart_id → reality 映射
+        let cloudMap = {}
+        for (let s of cloudB20.scores) {
+            cloudMap[s.chart_id] = s.reality
+        }
+
+        /** @type {{ chart_id: string, song: string, level: string, saveRlt: number, cloudRlt: number|null }[]} */
+        let diffs = []
+
+        for (let s of saveB20.scores.slice(0, 20)) {
+            let cid = s.chart_id
+            let saveRlt = s._reality || 0
+            let cloudRlt = cloudMap[cid] ?? null
+
+            // 差异阈值 0.005
+            if (cloudRlt == null || Math.abs(saveRlt - cloudRlt) > 0.005) {
+                let songKey = getInfo.chartIdToSongKey(cid)
+                let info = songKey ? getInfo.info(songKey) : null
+                let songName = info?.song || cid
+                let level = ''
+                if (info) {
+                    for (let lv of fCompute.Level) {
+                        if (info.chart[lv]?.chartid === cid) {
+                            level = fCompute.LevelAbbr[lv] || lv
+                            break
+                        }
+                    }
+                }
+                diffs.push({ chart_id: cid, song: songName, level, saveRlt, cloudRlt })
+            }
+        }
+
+        if (diffs.length === 0) return null
+
+        let lines = [`⚠️ 云端/存档差异 (${diffs.length} 首) — 需在线重打以同步：`]
+        for (let d of diffs) {
+            let levelTag = d.level ? ` [${d.level}]` : ''
+            if (d.cloudRlt == null) {
+                lines.push(`  ${d.song}${levelTag} → 云端缺此记录`)
+            } else {
+                let delta = (d.saveRlt - d.cloudRlt).toFixed(4)
+                lines.push(`  ${d.song}${levelTag} → 本地 ${d.saveRlt.toFixed(4)} / 云端 ${d.cloudRlt.toFixed(4)} Δ${delta}`)
+            }
+        }
+        lines.push(`（将上述曲目在线游玩一次即可消除差异）`)
+
+        return lines
+    }
 }

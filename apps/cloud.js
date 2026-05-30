@@ -16,6 +16,7 @@ import picmodle from '../model/picmodle.js'
 import Version from '../components/Version.js'
 import milPluginBase from '../components/baseClass.js'
 import logger from '../components/Logger.js'
+import { makeForwardMsg } from '../components/common.js'
 import MilthmCloudAuth from '../components/MilthmCloudAuth.js'
 import NyaProfilerAuth from '../components/NyaProfilerAuth.js'
 import SaveManager from '../model/SaveManager.js'
@@ -407,6 +408,10 @@ export class milcloud extends milPluginBase {
                         logger.info(`[mil-cloud] 云用户名已缓存: ${cloudUsername}`)
                     }
                 } catch (err) {
+                    if (err.message.includes('未授权') || err.message.includes('token 已失效') || err.message.includes('invalid_grant')) {
+                        send.send_with_At(e, `授权已过期，请重新 /${cmdHead} bind 授权`)
+                        return true
+                    }
                     logger.warn('[mil-cloud] 获取用户信息失败:', err.message)
                 }
             }
@@ -419,12 +424,20 @@ export class milcloud extends milPluginBase {
                     rankData = await auth.fetchRankData(cloudUsername)
                     logger.info(`[mil-cloud] Rank 获取成功`)
                 } catch (err) {
+                    if (err.message.includes('未授权') || err.message.includes('token 已失效') || err.message.includes('invalid_grant')) {
+                        send.send_with_At(e, `授权已过期，请重新 /${cmdHead} bind 授权`)
+                        return true
+                    }
                     logger.warn('[mil-cloud] 获取 Rank 失败:', err.message)
                 }
                 try {
                     recentRecords = await auth.fetchRecentData(cloudUsername)
                     logger.info(`[mil-cloud] Recent 获取成功: ${recentRecords?.length} 条`)
                 } catch (err) {
+                    if (err.message.includes('未授权') || err.message.includes('token 已失效') || err.message.includes('invalid_grant')) {
+                        send.send_with_At(e, `授权已过期，请重新 /${cmdHead} bind 授权`)
+                        return true
+                    }
                     logger.warn('[mil-cloud] 获取 Recent 失败:', err.message)
                 }
             }
@@ -563,6 +576,12 @@ export class milcloud extends milPluginBase {
                         true
                     )
                 }
+                // 逐曲差异提示
+                let diffMsgs = save.getB20DiffText(getInfo)
+                if (diffMsgs) {
+                    let forwardMsg = await makeForwardMsg(e, diffMsgs, 'B20 云端/存档差异')
+                    await e.reply(forwardMsg)
+                }
             } else {
                 if (recentUpdateEntry) {
                     let updateImg = await renderUpdateImage(userId, recentUpdateEntry)
@@ -576,6 +595,12 @@ export class milcloud extends milPluginBase {
                     `云端 Reality: ${cloudReality?.toFixed(4) || '未知'}${note}（未触发全量下载）`,
                     true
                 )
+                // 逐曲差异提示（未触发全量时也检测）
+                let diffMsgs2 = save.getB20DiffText(getInfo)
+                if (diffMsgs2) {
+                    let forwardMsg = await makeForwardMsg(e, diffMsgs2, 'B20 云端/存档差异')
+                    await e.reply(forwardMsg)
+                }
             }
         } catch (err) {
             logger.error('[mil-cloud] 云端更新失败:', err)
