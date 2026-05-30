@@ -1052,19 +1052,25 @@ export default class SaveManager {
         this.ensureLoaded()
 
         let scored = this.scores
-            .filter(s => s._cloudReality != null)
-            .map(s => {
-                let difficulty = this.getChartDifficulty(s.chart_id, getInfo)
-                return {
-                    chart_id: s.chart_id,
-                    score: s.score,
-                    reality: s._cloudReality,
-                    difficulty,
-                }
-            })
-            .sort((a, b) => b.reality - a.reality)
+            .filter(s => s._cloudReality != null && s._cloudReality > 0)
+            .map(s => ({
+                chart_id: s.chart_id,
+                score: s.score,
+                reality: s._cloudReality,
+            }))
 
-        let top20 = scored.slice(0, 20)
+        // 同 chart_id 取最高 _cloudReality（兼容跨版本重复记录）
+        let bestPerChart = {}
+        for (let s of scored) {
+            let cid = s.chart_id
+            if (!bestPerChart[cid] || s.reality > bestPerChart[cid].reality) {
+                bestPerChart[cid] = s
+            }
+        }
+        let bestList = Object.values(bestPerChart)
+        bestList.sort((a, b) => b.reality - a.reality)
+
+        let top20 = bestList.slice(0, 20)
         let reality = top20.length > 0
             ? top20.reduce((sum, s) => sum + s.reality, 0) / top20.length
             : 0
