@@ -107,9 +107,9 @@ export default new class GuessIll {
         let imgH = imgDims.height
 
         // 根据图片尺寸决定裁切窗口大小（为原图的 5%~8% 左右）
-        let cropRatio = fCompute.randFloatBetween(0.05, 0.08, 3)
-        let w_ = Math.round(imgW * cropRatio)
-        let h_ = Math.round(imgH * cropRatio)
+        // 以曲绘高度为基准，宽高各自独立随机，避免初始区域泄露原图比例
+        let w_ = Math.round(imgH * fCompute.randFloatBetween(0.05, 0.08, 3))
+        let h_ = Math.round(imgH * fCompute.randFloatBetween(0.05, 0.08, 3))
         // 确保最小尺寸
         w_ = Math.max(w_, 80)
         h_ = Math.max(h_, 80)
@@ -398,7 +398,8 @@ function area_increase(imgW, imgH, data, fnc) {
     let changed = false
 
     if (data.height < imgH) {
-        let increase = Math.round(imgH * 0.1)
+        let increase = Math.round(imgH * fCompute.randFloatBetween(0.03, 0.08, 3))
+        increase = Math.max(increase, 20)
         if (data.height + increase >= imgH) {
             data.height = imgH
             data.y = 0
@@ -410,7 +411,8 @@ function area_increase(imgW, imgH, data, fnc) {
         changed = true
     }
     if (data.width < imgW) {
-        let increase = Math.round(imgW * 0.1)
+        let increase = Math.round(imgW * fCompute.randFloatBetween(0.03, 0.08, 3))
+        increase = Math.max(increase, 20)
         if (data.width + increase >= imgW) {
             data.width = imgW
             data.x = 0
