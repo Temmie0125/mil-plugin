@@ -6,3 +6,4 @@ config/config/
 resources/origin_ill/
 .DS_Store
 *.log
+/CLAUDE.md

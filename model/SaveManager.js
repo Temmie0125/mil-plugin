@@ -811,6 +811,8 @@ export default class SaveManager {
                     let sg = fCompute.getScoreGrade(cloudScore)
                     let gm = { 'R': 0, 'M': 1, 'SS': 2, 'S': 3, 'A': 4, 'B': 5, 'C': 6, 'F': 7 }
                     if (gm[sg] != null) { existing._bestLevel = gm[sg]; existing.grade = sg }
+                    // 云端分数 > 本地分数，可以覆写版本
+                    existing.game_version = rankEntry.game_version || 'v5.0'
                 }
 
                 // acc 取最高

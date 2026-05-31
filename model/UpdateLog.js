@@ -4,11 +4,11 @@
  * 管理每个用户的存档更新历史：
  * - 每次导入存档或云端更新时，比对旧存档与新存档的差异
  * - 即使无变化也会记录一条「空变化」条目用于 Reality 曲线
- * - 首次导入时取新存档中 Reality 最高的 6 首作为展示
+ * - 首次导入时取新存档中 Reality 最高的 10 首作为展示
  * - 记录每次更新时的 Reality 值用于绘制折线图（不管是否变化）
  * - 存储为 user_id.json 在 data/updates/ 目录下
  * - 更新记录永久保留在磁盘文件中
- * - Guoba 配置项 maxUpdateEntries（10~99）仅控制 update 界面展示的最近记录条数
+ * - Guoba 配置项 maxUpdateEntries（10~99）控制 update 界面展示的曲目卡片最大数量
  * - Reality 变动曲线始终使用完整历史数据绘制，不受展示限制影响
  */
 import fs from 'fs'
@@ -80,17 +80,29 @@ export default class UpdateLog {
     }
 
     /**
-     * 修复存量更新历史中的错误评级图标
-     * 基于分数和 accuracy 重新计算 afterGrade/afterGradeLabel 和 beforeGrade
-     * @returns {number} 修复的条目数
+     * 修复存量更新历史中的错误评级图标，并迁移旧数据格式
+     * - 基于分数和 accuracy 重新计算 afterGrade/afterGradeLabel 和 beforeGrade
+     * - 修复旧代码中 totalChanges/_allChangesCount 被错误截断的问题（首次导入）
+     * @returns {number} 修复/迁移的条目数
      */
     repairGrades() {
         if (this.history.length === 0) return 0
         let fixed = 0
 
         for (let entry of this.history) {
-            if (!entry || !Array.isArray(entry.cards)) continue
-            for (let card of entry.cards) {
+            // 修复字段名错误：旧代码误写为 entry.cards，实际应为 entry.changes
+            let cards = entry.changes
+            if (!entry || !Array.isArray(cards)) continue
+
+            // 迁移旧数据：首次导入的 totalChanges 曾被 Math.min(scored.length, 6) 截断
+            // 由于原始总数无法恢复，至少确保与 changes 实际条数一致
+            if (entry._isFirstImport && entry.totalChanges != null && entry.totalChanges < cards.length) {
+                entry.totalChanges = cards.length
+                entry._allChangesCount = cards.length
+                fixed++
+            }
+
+            for (let card of cards) {
                 let newAfterGrade = this._calcGradeFromScoreAcc(card.afterScore || 0, card.afterAccuracy || 0)
                 if (card.afterGrade !== newAfterGrade.iconName || card.afterGradeLabel !== newAfterGrade.grade) {
                     card.afterGrade = newAfterGrade.iconName
@@ -188,7 +200,7 @@ export default class UpdateLog {
      */
     createEntry(oldScores, newScores, username, dateStr) {
         if (!oldScores || oldScores.length === 0) {
-            // 首次导入：取最高 Reality 的 6 首
+            // 首次导入：取最高 Reality 的 10 首
             return this._createFirstImportEntry(newScores, username, dateStr)
         }
 
@@ -207,7 +219,7 @@ export default class UpdateLog {
         let reality = this._calcRealityFromScores(newScores)
         let starLevel = this._calcStarLevel(newScores)
 
-        // 计算每条记录的 Reality 并按降序排序，取前 6
+        // 计算每条记录的 Reality 并按降序排序，取前 10
         let scored = newScores.map(s => {
             let rlt, difficulty
             if (s._nyaSingleRating != null) {
@@ -236,14 +248,14 @@ export default class UpdateLog {
         // 按 Reality 降序
         scored.sort((a, b) => b._rlt - a._rlt || b.score - a.score)
 
-        // 按 chart_id 去重取前 6（避免同谱面 V2/V3 重复展示）
+        // 按 chart_id 去重取前 10（避免同谱面 V2/V3 重复展示）
         let seenCharts = new Set()
         let displayList = []
         for (let s of scored) {
             if (seenCharts.has(s.chart_id)) continue
             seenCharts.add(s.chart_id)
             displayList.push(s)
-            if (displayList.length >= 6) break
+            if (displayList.length >= 10) break
         }
 
         let changes = displayList.map(s => this._buildSongDiff(s, null, s._diff))
@@ -261,9 +273,9 @@ export default class UpdateLog {
             afterReality: reality,
             realityDelta: 0,
             starLevel,
-            totalChanges: Math.min(scored.length, 6),
+            totalChanges: scored.length,
             changes,
-            _allChangesCount: Math.min(scored.length, 6),
+            _allChangesCount: scored.length,
             _isFirstImport: true
         }
     }
@@ -322,12 +334,12 @@ export default class UpdateLog {
 
         newEntries.sort((a, b) => b.afterScore - a.afterScore)
 
-        let displayChanges = changedEntries.slice(0, 5)
+        let displayChanges = changedEntries.slice(0, 9)
         if (newEntries.length > 0) {
-            displayChanges = displayChanges.concat(newEntries.slice(0, Math.max(1, 6 - displayChanges.length)))
+            displayChanges = displayChanges.concat(newEntries.slice(0, Math.max(1, 10 - displayChanges.length)))
         }
-        if (displayChanges.length < 6) {
-            displayChanges = changes.slice(0, 6)
+        if (displayChanges.length < 10) {
+            displayChanges = changes.slice(0, 10)
         }
 
         return {
