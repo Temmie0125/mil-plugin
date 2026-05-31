@@ -68,12 +68,62 @@ export default class UpdateLog {
                 let raw = fs.readFileSync(this.logPath, 'utf8')
                 let data = JSON.parse(raw)
                 this.history = Array.isArray(data.history) ? data.history : []
+                // 自动修复存量错误评级
+                let fixed = this.repairGrades()
+                if (fixed > 0) logger.mark(`[mil-plugin] 修复 ${this.userId} 的更新历史评级: ${fixed} 条`)
             }
         } catch (e) {
             logger.error(`[mil-plugin] 加载更新日志失败 (${this.userId}):`, e.message)
             this.history = []
         }
         return this.history
+    }
+
+    /**
+     * 修复存量更新历史中的错误评级图标
+     * 基于分数和 accuracy 重新计算 afterGrade/afterGradeLabel 和 beforeGrade
+     * @returns {number} 修复的条目数
+     */
+    repairGrades() {
+        if (this.history.length === 0) return 0
+        let fixed = 0
+
+        for (let entry of this.history) {
+            if (!entry || !Array.isArray(entry.cards)) continue
+            for (let card of entry.cards) {
+                let newAfterGrade = this._calcGradeFromScoreAcc(card.afterScore || 0, card.afterAccuracy || 0)
+                if (card.afterGrade !== newAfterGrade.iconName || card.afterGradeLabel !== newAfterGrade.grade) {
+                    card.afterGrade = newAfterGrade.iconName
+                    card.afterGradeLabel = newAfterGrade.grade
+                    fixed++
+                }
+                // 也修复 beforeGrade（如果有旧分数）
+                if (card.beforeScore != null && card.beforeAccuracy != null && !card.isNew) {
+                    let newBeforeGrade = this._calcGradeFromScoreAcc(card.beforeScore, card.beforeAccuracy)
+                    if (card.beforeGrade !== newBeforeGrade.iconName) {
+                        card.beforeGrade = newBeforeGrade.iconName
+                        fixed++
+                    }
+                }
+            }
+        }
+
+        if (fixed > 0) this.save()
+        return fixed
+    }
+
+    /**
+     * 从分数和 accuracy 推算评级（用于存量修复，无原始记录细节）
+     */
+    _calcGradeFromScoreAcc(score, accuracy) {
+        let scoreGrade = fCompute.getScoreGrade(score)
+        let isAP = (accuracy || 0) >= 0.9999
+        let isR = score >= 1010000
+
+        if (isR) return { grade: 'R', iconName: 'R' }
+        if (isAP) return { grade: 'AP', iconName: 'AP' + scoreGrade }
+        // FC 无法从存量数据判断，仅按分数评级
+        return { grade: scoreGrade, iconName: scoreGrade }
     }
 
     /**
@@ -266,7 +316,19 @@ export default class UpdateLog {
         let newReality = this._calcRealityFromScores(newScores)
         let starLevel = this._calcStarLevel(newScores)
 
-        let displayChanges = changes.slice(0, 6)
+        // 分离新谱面和已变化谱面，确保新谱面（含无定数特殊谱面）至少展示 1 首
+        let changedEntries = changes.filter(c => !c.isNew)
+        let newEntries = changes.filter(c => c.isNew)
+
+        newEntries.sort((a, b) => b.afterScore - a.afterScore)
+
+        let displayChanges = changedEntries.slice(0, 5)
+        if (newEntries.length > 0) {
+            displayChanges = displayChanges.concat(newEntries.slice(0, Math.max(1, 6 - displayChanges.length)))
+        }
+        if (displayChanges.length < 6) {
+            displayChanges = changes.slice(0, 6)
+        }
 
         return {
             date: dateStr,
@@ -375,25 +437,31 @@ export default class UpdateLog {
      * @returns {{grade: string, iconName: string}}
      */
     _getGradeForRecord(record) {
-        if (record._source === 'saves' || record._source === 'nya_profiler') {
-            let scoreGrade = (record._bestLevel != null && BEST_LEVEL_GRADE[record._bestLevel])
-                || fCompute.getScoreGrade(record.score)
-            let isAP = record.score_accuracy >= 0.9999
-            let isFC = Array.isArray(record._achievedStatus) && record._achievedStatus.includes(4)
+        // scoreGrade 优先取 saves.db 的 BestLevel，其次按分数算
+        let scoreGrade = (record._bestLevel != null && BEST_LEVEL_GRADE[record._bestLevel])
+            || fCompute.getScoreGrade(record.score)
 
-            if (record._bestLevel === 0) {
-                return { grade: 'R', iconName: 'R' }
-            }
-            if (isAP) {
-                return { grade: 'AP', iconName: 'AP' + scoreGrade }
-            }
-            if (isFC) {
-                return { grade: 'FC', iconName: 'FC' + scoreGrade }
-            }
-            return { grade: scoreGrade, iconName: scoreGrade }
+        // AP 检测：accuracy >= 0.9999
+        let isAP = (record.score_accuracy || 0) >= 0.9999
+
+        // FC 检测：saves/nya 用 _achievedStatus，cloud 用判定计数
+        let isFC
+        if (record._source === 'saves' || record._source === 'nya_profiler') {
+            isFC = Array.isArray(record._achievedStatus) && record._achievedStatus.includes(4)
+        } else {
+            isFC = (record.score_bad_count || 0) === 0 && (record.score_miss_count || 0) === 0
         }
 
-        let scoreGrade = fCompute.getScoreGrade(record.score)
+        // R 评：BestLevel=0 或分数=1010000
+        if (record._bestLevel === 0 || record.score === 1010000) {
+            return { grade: 'R', iconName: 'R' }
+        }
+        if (isAP) {
+            return { grade: 'AP', iconName: 'AP' + scoreGrade }
+        }
+        if (isFC) {
+            return { grade: 'FC', iconName: 'FC' + scoreGrade }
+        }
         return { grade: scoreGrade, iconName: scoreGrade }
     }
 

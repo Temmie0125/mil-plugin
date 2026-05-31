@@ -10,6 +10,7 @@ import fs from 'fs'
 import fCompute from './fCompute.js'
 import { calcReality, calcB20Reality, parseGameVersion } from './reality.js'
 import Config from '../components/Config.js'
+import getInfo from './getInfo.js'
 
 /**
  * BestLevel → 评级映射 (saves.db)
@@ -347,6 +348,25 @@ export default class SaveManager {
     _versionGroup(gameVersion) {
         let v = parseGameVersion(gameVersion)
         return v < 4.0 ? 'old' : 'new'
+    }
+
+    /**
+     * 判断是否为定数明确为 0 的特殊谱面（如教程/剧情谱面）
+     * 仅在 info.json 中存在且 difficultyValue 严格为 0 时返回 true
+     * @param {string} chartId
+     * @returns {boolean}
+     */
+    _isZeroDiffChart(chartId) {
+        let songKey = getInfo.chartIdToSongKey(chartId)
+        if (!songKey) return false
+        let info = getInfo.info(songKey)
+        if (!info) return false
+        for (let level of fCompute.Level) {
+            if (info.chart[level]?.chartid === chartId) {
+                return info.chart[level].difficulty === 0
+            }
+        }
+        return false
     }
 
     /**
@@ -925,7 +945,8 @@ export default class SaveManager {
                 let cloudGroup = this._versionGroup(cloudVer)
 
                 // 跨版本组：作为独立记录添加（保留旧版记录用于 max(v2,v3) 计算）
-                if (localGroup !== cloudGroup) {
+                // 定数为 0 的特殊谱面跨版本时直接合并，避免重复记录
+                if (localGroup !== cloudGroup && !this._isZeroDiffChart(cid)) {
                     this.scores.push({
                         chart_id: cid, score: record.score,
                         score_accuracy: record.score_accuracy || 0,
@@ -989,10 +1010,10 @@ export default class SaveManager {
                 if (!existing._cloudEnriched) { existing._cloudEnriched = true; enrichedCount++ }
                 this.scores[idx] = existing
             } else {
-                // 新谱面，直接添加
+                // 新谱面（含特殊谱面如 Reality=0），直接添加
                 this.scores.push({
                     chart_id: cid, score: record.score,
-                    score_accuracy: record.score_accuracy || 0,
+                    score_accuracy: record.score_accuracy ?? 0,
                     score_exact_count: record.score_exact_count || 0,
                     score_perfect_count: record.score_perfect_count || 0,
                     score_great_count: record.score_great_count || 0,
@@ -1006,7 +1027,7 @@ export default class SaveManager {
                     grade: record.grade || '',
                     _source: 'cloud_recent',
                     _modifiers: modifiers,
-                    _cloudReality: record.reality || 0,
+                    _cloudReality: record.reality ?? 0,
                     _cloudEnriched: true
                 })
                 mergedCount++
