@@ -777,29 +777,45 @@ export default class SaveManager {
                 let idx = scoreIndex[cid]
                 let existing = this.scores[idx]
 
-                // Rank 是权威 B20，分数更高时全量覆盖
-                if (rankEntry.score >= existing.score) {
-                    existing.score = rankEntry.score
-                    existing.score_accuracy = rankEntry.score_accuracy ?? existing.score_accuracy
-                    // 同步更新评级
-                    let sg = fCompute.getScoreGrade(rankEntry.score)
+                let cloudScore = rankEntry.score
+                let cloudAcc = rankEntry.score_accuracy ?? 0
+                let localScore = existing.score ?? 0
+                let localAcc = existing.score_accuracy ?? 0
+
+                let scoreImproved = cloudScore >= localScore
+                let accImproved = cloudAcc >= localAcc
+                let anyImproved = scoreImproved || accImproved
+
+                // 分数取最高
+                if (scoreImproved) {
+                    existing.score = cloudScore
+                    // 同步更新评级（评级由分数决定）
+                    let sg = fCompute.getScoreGrade(cloudScore)
                     let gm = { 'R': 0, 'M': 1, 'SS': 2, 'S': 3, 'A': 4, 'B': 5, 'C': 6, 'F': 7 }
                     if (gm[sg] != null) { existing._bestLevel = gm[sg]; existing.grade = sg }
                 }
 
-                // 合并详细判定数据
-                existing.score_exact_count = rankEntry.score_exact_count ?? existing.score_exact_count ?? 0
-                existing.score_perfect_count = rankEntry.score_perfect_count ?? existing.score_perfect_count ?? 0
-                existing.score_great_count = rankEntry.score_great_count ?? existing.score_great_count ?? 0
-                existing.score_good_count = rankEntry.score_good_count ?? existing.score_good_count ?? 0
-                existing.score_bad_count = rankEntry.score_bad_count ?? existing.score_bad_count ?? 0
-                existing.score_miss_count = rankEntry.score_miss_count ?? existing.score_miss_count ?? 0
-                existing.score_fracture_exact_count = rankEntry.score_fracture_exact_count ?? existing.score_fracture_exact_count ?? 0
-                existing.score_fracture_miss_count = rankEntry.score_fracture_miss_count ?? existing.score_fracture_miss_count ?? 0
+                // acc 取最高
+                if (accImproved) {
+                    existing.score_accuracy = cloudAcc
+                }
 
-                // 使用云端更精确的 accuracy
-                if (rankEntry.score_accuracy != null) {
-                    existing.score_accuracy = rankEntry.score_accuracy
+                // 判定详情在分数或 acc 任意一项推进时更新
+                if (anyImproved) {
+                    existing.score_exact_count = rankEntry.score_exact_count ?? existing.score_exact_count ?? 0
+                    existing.score_perfect_count = rankEntry.score_perfect_count ?? existing.score_perfect_count ?? 0
+                    existing.score_great_count = rankEntry.score_great_count ?? existing.score_great_count ?? 0
+                    existing.score_good_count = rankEntry.score_good_count ?? existing.score_good_count ?? 0
+                    existing.score_bad_count = rankEntry.score_bad_count ?? existing.score_bad_count ?? 0
+                    existing.score_miss_count = rankEntry.score_miss_count ?? existing.score_miss_count ?? 0
+                    existing.score_fracture_exact_count = rankEntry.score_fracture_exact_count ?? existing.score_fracture_exact_count ?? 0
+                    existing.score_fracture_miss_count = rankEntry.score_fracture_miss_count ?? existing.score_fracture_miss_count ?? 0
+
+                    // FC 检测
+                    if ((rankEntry.score_bad_count || 0) === 0 && (rankEntry.score_miss_count || 0) === 0) {
+                        if (!existing._achievedStatus) existing._achievedStatus = []
+                        if (!existing._achievedStatus.includes(4)) existing._achievedStatus.push(4)
+                    }
                 }
 
                 // 补充游玩时间和 Mod 信息
@@ -808,14 +824,6 @@ export default class SaveManager {
                 }
                 if (modifiers.length > 0) {
                     existing._modifiers = modifiers
-                }
-
-                // 根据云端判定数据修正 _achievedStatus（FC 检测）
-                if ((rankEntry.score_bad_count || 0) === 0 && (rankEntry.score_miss_count || 0) === 0) {
-                    if (!existing._achievedStatus) existing._achievedStatus = []
-                    if (!existing._achievedStatus.includes(4)) {
-                        existing._achievedStatus.push(4)
-                    }
                 }
 
                 // 云端返回的 Reality 值
@@ -946,14 +954,27 @@ export default class SaveManager {
                     continue
                 }
 
-                // 同版本组：只有分数更高时才更新
-                if (record.score > existing.score) {
-                    existing.score = record.score
-                    existing.score_accuracy = record.score_accuracy ?? existing.score_accuracy
-                    // 同步更新评级
-                    let sg = fCompute.getScoreGrade(record.score)
+                // 同版本组：分数和 acc 各自保留最高
+                let cloudScore = record.score
+                let cloudAcc = record.score_accuracy ?? 0
+                let localScore = existing.score ?? 0
+                let localAcc = existing.score_accuracy ?? 0
+
+                let scoreImproved = cloudScore > localScore
+                let accImproved = cloudAcc > localAcc
+                let anyImproved = scoreImproved || accImproved
+
+                if (scoreImproved) {
+                    existing.score = cloudScore
+                    let sg = fCompute.getScoreGrade(cloudScore)
                     let gm = { 'R': 0, 'M': 1, 'SS': 2, 'S': 3, 'A': 4, 'B': 5, 'C': 6, 'F': 7 }
                     if (gm[sg] != null) { existing._bestLevel = gm[sg]; existing.grade = sg }
+                }
+                if (accImproved) {
+                    existing.score_accuracy = cloudAcc
+                }
+
+                if (anyImproved || !existing._cloudEnriched) {
                     existing.score_exact_count = record.score_exact_count ?? existing.score_exact_count ?? 0
                     existing.score_perfect_count = record.score_perfect_count ?? existing.score_perfect_count ?? 0
                     existing.score_great_count = record.score_great_count ?? existing.score_great_count ?? 0
@@ -964,34 +985,14 @@ export default class SaveManager {
                     existing.score_fracture_miss_count = record.score_fracture_miss_count ?? existing.score_fracture_miss_count ?? 0
                     if (record.played_at && !existing.played_at) existing.played_at = record.played_at
                     if (modifiers.length > 0) existing._modifiers = modifiers
-                    if (record.reality != null) existing._cloudReality = record.reality
-                    // FC 检测
+                    if (record.reality != null && existing._cloudReality == null) existing._cloudReality = record.reality
                     if ((record.score_bad_count || 0) === 0 && (record.score_miss_count || 0) === 0) {
                         if (!existing._achievedStatus) existing._achievedStatus = []
                         if (!existing._achievedStatus.includes(4)) existing._achievedStatus.push(4)
                     }
-                    if (!existing._cloudEnriched) { existing._cloudEnriched = true; enrichedCount++ }
-                    this.scores[idx] = existing
-                } else if (!existing._cloudEnriched) {
-                    // 分数未超过但缺少判定详情时补全
-                    existing.score_exact_count = record.score_exact_count ?? existing.score_exact_count ?? 0
-                    existing.score_perfect_count = record.score_perfect_count ?? existing.score_perfect_count ?? 0
-                    existing.score_great_count = record.score_great_count ?? existing.score_great_count ?? 0
-                    existing.score_good_count = record.score_good_count ?? existing.score_good_count ?? 0
-                    existing.score_bad_count = record.score_bad_count ?? existing.score_bad_count ?? 0
-                    existing.score_miss_count = record.score_miss_count ?? existing.score_miss_count ?? 0
-                    existing.score_fracture_exact_count = record.score_fracture_exact_count ?? existing.score_fracture_exact_count ?? 0
-                    existing.score_fracture_miss_count = record.score_fracture_miss_count ?? existing.score_fracture_miss_count ?? 0
-                    if (modifiers.length > 0) existing._modifiers = modifiers
-                    if (record.reality != null) existing._cloudReality = record.reality
-                    // FC 检测
-                    if ((record.score_bad_count || 0) === 0 && (record.score_miss_count || 0) === 0) {
-                        if (!existing._achievedStatus) existing._achievedStatus = []
-                        if (!existing._achievedStatus.includes(4)) existing._achievedStatus.push(4)
-                    }
-                    existing._cloudEnriched = true; enrichedCount++
-                    this.scores[idx] = existing
                 }
+                if (!existing._cloudEnriched) { existing._cloudEnriched = true; enrichedCount++ }
+                this.scores[idx] = existing
             } else {
                 // 新谱面，直接添加
                 this.scores.push({
