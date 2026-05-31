@@ -5,9 +5,13 @@
  */
 import fs from 'node:fs'
 import logger from './Logger.js'
+import Version from './Version.js'
 
 const MILTHM_API_BASE = 'https://milkloud.milthm.cn/api'
 const OIDC_DISCOVERY_URL = `${MILTHM_API_BASE}/oidc/.well-known/openid-configuration`
+
+/** User-Agent 用于标识插件身份，便于用户在 Milkloud 会话管理器中辨别 */
+const USER_AGENT = `mil-plugin/${Version.ver} (YunzaiBot; MilthmCloud)`
 
 /** 硬编码的已知端点——作为 OIDC 发现的回退方案 */
 const DEFAULT_DEVICE_AUTH_ENDPOINT = `${MILTHM_API_BASE}/oidc/device_authorization`
@@ -142,7 +146,7 @@ export default class MilthmCloudAuth {
 
         logger.debug('[mil-cloud] 开始 OIDC 服务发现...')
         try {
-            let resp = await fetch(OIDC_DISCOVERY_URL)
+            let resp = await fetch(OIDC_DISCOVERY_URL, { headers: { 'User-Agent': USER_AGENT } })
             if (resp.ok) {
                 let config = await resp.json()
                 this._oidcConfig = {
@@ -285,6 +289,9 @@ export default class MilthmCloudAuth {
         if (data.error === 'access_denied') {
             return { success: false, error: 'denied' }
         }
+        if (data.error === 'invalid_grant') {
+            return { success: false, error: 'invalid_grant' }
+        }
 
         // 未知错误
         logger.error(`[mil-cloud] 轮询 token 失败:`, data)
@@ -333,6 +340,17 @@ export default class MilthmCloudAuth {
             }
 
             let data = JSON.parse(body)
+            // 检查 OIDC 标准错误 (invalid_grant 等)
+            if (data.error === 'invalid_grant') {
+                logger.error('[mil-cloud] 刷新 token 失败: invalid_grant（token 已失效），清除本地 token')
+                this.clearTokens()
+                return false
+            }
+            if (data.error) {
+                logger.error(`[mil-cloud] 刷新 token 失败: ${data.error}`, body)
+                this.clearTokens()
+                return false
+            }
             // 更新 token（保留 refresh_token 如果服务端没返回新的）
             let newToken = this._buildTokenData(data)
             if (!newToken.refresh_token && this._token.refresh_token) {
@@ -389,15 +407,16 @@ export default class MilthmCloudAuth {
      */
     async fetchSaveInfo() {
         let token = await this.getAccessToken()
-        if (!token) throw new Error('未授权或 token 已失效，请重新 /mil bind 授权')
+        if (!token) throw new Error('[invalid_grant] 未授权或 token 已失效，请重新 /mil bind 授权')
 
         let resp = await fetch(`${MILTHM_API_BASE}/v1/game/save/info`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}`, 'User-Agent': USER_AGENT }
         })
 
         let body = await resp.text()
         if (!resp.ok) {
-            throw new Error(`获取存档信息失败: HTTP ${resp.status} ${body}`)
+            let errPrefix = resp.status === 401 ? '[invalid_grant] ' : ''
+            throw new Error(`${errPrefix}获取存档信息失败: HTTP ${resp.status} ${body}`)
         }
 
         let data = JSON.parse(body)
@@ -417,15 +436,16 @@ export default class MilthmCloudAuth {
      */
     async fetchSaveData() {
         let token = await this.getAccessToken()
-        if (!token) throw new Error('未授权或 token 已失效，请重新 /mil bind 授权')
+        if (!token) throw new Error('[invalid_grant] 未授权或 token 已失效，请重新 /mil bind 授权')
 
         let resp = await fetch(`${MILTHM_API_BASE}/v1/game/save`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}`, 'User-Agent': USER_AGENT }
         })
 
         let body = await resp.text()
         if (!resp.ok) {
-            throw new Error(`获取存档数据失败: HTTP ${resp.status} ${body}`)
+            let errPrefix = resp.status === 401 ? '[invalid_grant] ' : ''
+            throw new Error(`${errPrefix}获取存档数据失败: HTTP ${resp.status} ${body}`)
         }
 
         let data = JSON.parse(body)
@@ -464,15 +484,16 @@ export default class MilthmCloudAuth {
 
         // 2) 调用 /v1/user 接口
         let token = await this.getAccessToken()
-        if (!token) throw new Error('未授权或 token 已失效')
+        if (!token) throw new Error('[invalid_grant] 未授权或 token 已失效')
 
         let resp = await fetch(`${MILTHM_API_BASE}/v1/user?`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}`, 'User-Agent': USER_AGENT }
         })
 
         let body = await resp.text()
         if (!resp.ok) {
-            throw new Error(`获取用户信息失败: HTTP ${resp.status}`)
+            let errPrefix = resp.status === 401 ? '[invalid_grant] ' : ''
+            throw new Error(`${errPrefix}获取用户信息失败: HTTP ${resp.status}`)
         }
 
         let data = JSON.parse(body)
@@ -507,15 +528,16 @@ export default class MilthmCloudAuth {
      */
     async fetchRankData(username) {
         let token = await this.getAccessToken()
-        if (!token) throw new Error('未授权或 token 已失效，请重新 /mil bind 授权')
+        if (!token) throw new Error('[invalid_grant] 未授权或 token 已失效，请重新 /mil bind 授权')
 
         let resp = await fetch(`${MILTHM_API_BASE}/v1/user/${encodeURIComponent(username)}/rank?`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}`, 'User-Agent': USER_AGENT }
         })
 
         let body = await resp.text()
         if (!resp.ok) {
-            throw new Error(`获取 Rank 数据失败: HTTP ${resp.status} ${body}`)
+            let errPrefix = resp.status === 401 ? '[invalid_grant] ' : ''
+            throw new Error(`${errPrefix}获取 Rank 数据失败: HTTP ${resp.status} ${body}`)
         }
 
         let data = JSON.parse(body)
@@ -547,15 +569,16 @@ export default class MilthmCloudAuth {
      */
     async fetchRecentData(username) {
         let token = await this.getAccessToken()
-        if (!token) throw new Error('未授权或 token 已失效，请重新 /mil bind 授权')
+        if (!token) throw new Error('[invalid_grant] 未授权或 token 已失效，请重新 /mil bind 授权')
 
         let resp = await fetch(`${MILTHM_API_BASE}/v1/user/${encodeURIComponent(username)}/recent?`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}`, 'User-Agent': USER_AGENT }
         })
 
         let body = await resp.text()
         if (!resp.ok) {
-            throw new Error(`获取 Recent 数据失败: HTTP ${resp.status} ${body}`)
+            let errPrefix = resp.status === 401 ? '[invalid_grant] ' : ''
+            throw new Error(`${errPrefix}获取 Recent 数据失败: HTTP ${resp.status} ${body}`)
         }
 
         let data = JSON.parse(body)
@@ -575,7 +598,7 @@ export default class MilthmCloudAuth {
      */
     async downloadSaveFile(fileUrl) {
         logger.debug('[mil-cloud] 下载存档文件:', fileUrl)
-        let resp = await fetch(fileUrl, { redirect: 'follow' })
+        let resp = await fetch(fileUrl, { redirect: 'follow', headers: { 'User-Agent': USER_AGENT } })
 
         let contentType = resp.headers.get('content-type') || 'unknown'
         let contentLength = resp.headers.get('content-length') || 'unknown'
@@ -611,7 +634,9 @@ export default class MilthmCloudAuth {
      * @returns {Record<string, string>}
      */
     _getAuthHeaders() {
-        let headers = {}
+        let headers = {
+            'User-Agent': USER_AGENT
+        }
         if (this.clientSecret) {
             let credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64')
             headers['Authorization'] = `Basic ${credentials}`

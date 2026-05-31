@@ -408,7 +408,7 @@ export class milcloud extends milPluginBase {
                         logger.info(`[mil-cloud] 云用户名已缓存: ${cloudUsername}`)
                     }
                 } catch (err) {
-                    if (err.message.includes('未授权') || err.message.includes('token 已失效') || err.message.includes('invalid_grant')) {
+                    if (err.message.includes('invalid_grant')) {
                         send.send_with_At(e, `授权已过期，请重新 /${cmdHead} bind 授权`)
                         return true
                     }
@@ -424,7 +424,7 @@ export class milcloud extends milPluginBase {
                     rankData = await auth.fetchRankData(cloudUsername)
                     logger.info(`[mil-cloud] Rank 获取成功`)
                 } catch (err) {
-                    if (err.message.includes('未授权') || err.message.includes('token 已失效') || err.message.includes('invalid_grant')) {
+                    if (err.message.includes('invalid_grant')) {
                         send.send_with_At(e, `授权已过期，请重新 /${cmdHead} bind 授权`)
                         return true
                     }
@@ -434,7 +434,7 @@ export class milcloud extends milPluginBase {
                     recentRecords = await auth.fetchRecentData(cloudUsername)
                     logger.info(`[mil-cloud] Recent 获取成功: ${recentRecords?.length} 条`)
                 } catch (err) {
-                    if (err.message.includes('未授权') || err.message.includes('token 已失效') || err.message.includes('invalid_grant')) {
+                    if (err.message.includes('invalid_grant')) {
                         send.send_with_At(e, `授权已过期，请重新 /${cmdHead} bind 授权`)
                         return true
                     }
@@ -513,7 +513,7 @@ export class milcloud extends milPluginBase {
                 try {
                     saveData = await auth.fetchSaveData()
                 } catch (err) {
-                    if (err.message.includes('未授权') || err.message.includes('token 已失效')) {
+                    if (err.message.includes('invalid_grant')) {
                         send.send_with_At(e, `临时授权已过期，请重新 /${cmdHead} bind 授权`)
                         return true
                     }
