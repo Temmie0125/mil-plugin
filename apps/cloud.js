@@ -442,7 +442,10 @@ export class milcloud extends milPluginBase {
                 }
             }
 
-            let cloudReality = rankData ? rankData.touchReality : null
+            // 合并双端 reality（取最高，因为存档双端共用）
+            let cloudReality = rankData
+                ? Math.max(rankData.touchReality || 0, rankData.keyboardReality || 0)
+                : null
 
             // 4. 用 rank/recent 数据补充本地存档，判断是否需要全量更新
             let needFullUpdate = !hasLocalData
@@ -452,9 +455,10 @@ export class milcloud extends milPluginBase {
                 // 捕获旧成绩用于 diff
                 let oldScores = getSave._captureOldScores(userId)
 
-                // 导入 rank（权威 B20）先于 recent（避免低分覆盖）
-                if (rankData && rankData.touchRanks && rankData.touchRanks.length > 0) {
-                    save.importFromCloudRank(rankData.touchRanks, rankData.touchReality)
+                // 导入 rank（权威 B20，touch + keyboard 合并）先于 recent（避免低分覆盖）
+                let allRanks = [...(rankData?.touchRanks || []), ...(rankData?.keyboardRanks || [])]
+                if (allRanks.length > 0) {
+                    save.importFromCloudRank(allRanks, cloudReality)
                 }
                 save.importFromCloudRecent(recentRecords)
 
@@ -478,13 +482,15 @@ export class milcloud extends milPluginBase {
                         logger.info(`[mil-cloud] Reality 一致 (diff=${diff.toFixed(4)})，跳过全量更新`)
                     }
                     // 逐曲诊断（diff > 0.001 时打印详情）
-                    if (diff > 0.001 && rankData && rankData.touchRanks) {
+                    if (diff > 0.001 && rankData) {
                         let localMap = {}
                         for (let s of localB20.scores) {
                             if (s._reality != null) localMap[s.chart_id] = s._reality
                         }
+                        let allDiagRanks = [...(rankData.touchRanks || []), ...(rankData.keyboardRanks || [])]
+                            .sort((a, b) => (b.reality || 0) - (a.reality || 0))
                         let mismatches = []
-                        for (let r of rankData.touchRanks.slice(0, 20)) {
+                        for (let r of allDiagRanks.slice(0, 20)) {
                             let lr = localMap[r.chart_id]
                             if (lr != null) {
                                 let d = Math.abs((r.reality || 0) - lr)
@@ -551,10 +557,11 @@ export class milcloud extends milPluginBase {
                     return true
                 }
 
-                // 全量导入后再用 rank/recent 富化
+                // 全量导入后再用 rank/recent 富化（双端合并）
                 save = getSave.saves[userId]
-                if (rankData && rankData.touchRanks && rankData.touchRanks.length > 0) {
-                    save.importFromCloudRank(rankData.touchRanks, rankData.touchReality)
+                let allRanks2 = [...(rankData?.touchRanks || []), ...(rankData?.keyboardRanks || [])]
+                if (allRanks2.length > 0) {
+                    save.importFromCloudRank(allRanks2, cloudReality)
                 }
                 if (recentRecords && recentRecords.length > 0) {
                     save.importFromCloudRecent(recentRecords)

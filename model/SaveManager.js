@@ -747,11 +747,11 @@ export default class SaveManager {
      * 将云端返回的详细判定数据（exact/perfect/great/good/bad/miss 计数、
      * modifiers、played_at 等）合并到现有成绩中，补充 saves.db 格式缺失的细节。
      * 同时记录云端返回的 Reality 用于比对本地计算值。
-     * @param {any[]} touchRanks - rank API 返回的 touch_ranks 数组
+     * @param {any[]} rankEntries - rank API 返回的 rank 数组（touch + keyboard 合并）
      * @param {number} cloudReality - 云端 total Reality
      * @returns {{mergedCount: number, enrichedCount: number}}
      */
-    importFromCloudRank(touchRanks, cloudReality) {
+    importFromCloudRank(rankEntries, cloudReality) {
         this.cloudRankReality = cloudReality
 
         // 构建现有 scores 的 chart_id → index 映射
@@ -767,12 +767,10 @@ export default class SaveManager {
         let enrichedCount = 0
         let mergedCount = 0
 
-        for (let rankEntry of touchRanks) {
-            // 只处理 TouchMode 标记的记录（过滤掉纯 keyboard 数据）
-            let modifiers = rankEntry.modifiers || []
-            let isTouch = modifiers.some(m => m.toLowerCase().includes('touch'))
-
+        for (let rankEntry of rankEntries) {
             let cid = rankEntry.chart_id
+            let modifiers = rankEntry.modifiers || []
+
             if (cid in scoreIndex) {
                 let idx = scoreIndex[cid]
                 let existing = this.scores[idx]
@@ -838,7 +836,7 @@ export default class SaveManager {
                 }
 
                 this.scores[idx] = existing
-            } else if (isTouch) {
+            } else {
                 // 云端有但本地没有的新记录（可能因为存档格式不同步）
                 let newRecord = {
                     chart_id: cid,
@@ -894,9 +892,6 @@ export default class SaveManager {
 
         for (let record of recentRecords) {
             let modifiers = record.modifiers || []
-            let isTouch = modifiers.some(m => m.toLowerCase().includes('touch'))
-            if (!isTouch) continue
-
             let cid = record.chart_id
 
             // 保留第一条 TouchMode 记录用于后续 recent 功能展示
