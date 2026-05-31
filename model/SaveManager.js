@@ -766,6 +766,7 @@ export default class SaveManager {
      * 从云端 Rank 接口导入 B20 详细游玩表现
      * 将云端返回的详细判定数据（exact/perfect/great/good/bad/miss 计数、
      * modifiers、played_at 等）合并到现有成绩中，补充 saves.db 格式缺失的细节。
+     * 按版本组隔离：同版本组高分覆盖，跨版本组独立保存（与 importFromCloudRecent 一致）。
      * 同时记录云端返回的 Reality 用于比对本地计算值。
      * @param {any[]} rankEntries - rank API 返回的 rank 数组（touch + keyboard 合并）
      * @param {number} cloudReality - 云端 total Reality
@@ -774,13 +775,15 @@ export default class SaveManager {
     importFromCloudRank(rankEntries, cloudReality) {
         this.cloudRankReality = cloudReality
 
-        // 构建现有 scores 的 chart_id → index 映射
+        // 构建现有 scores 的 (chart_id, versionGroup) → index 映射
         let scoreIndex = {}
         for (let i = 0; i < this.scores.length; i++) {
             let cid = this.scores[i].chart_id
-            // 每个 chart_id 保留最高分的那条索引
-            if (!(cid in scoreIndex) || this.scores[i].score > this.scores[scoreIndex[cid]].score) {
-                scoreIndex[cid] = i
+            let vg = this._versionGroup(this.scores[i].game_version)
+            let key = `${cid}__${vg}`
+            // 每个 (chart_id, 版本组) 保留最高分的那条索引
+            if (!(key in scoreIndex) || this.scores[i].score > this.scores[scoreIndex[key]].score) {
+                scoreIndex[key] = i
             }
         }
 
@@ -790,9 +793,13 @@ export default class SaveManager {
         for (let rankEntry of rankEntries) {
             let cid = rankEntry.chart_id
             let modifiers = rankEntry.modifiers || []
+            let cloudVer = rankEntry.game_version || 'v5.0'
+            let cloudGroup = this._versionGroup(cloudVer)
+            let key = `${cid}__${cloudGroup}`
 
-            if (cid in scoreIndex) {
-                let idx = scoreIndex[cid]
+            if (key in scoreIndex) {
+                // 同版本组：合并高分
+                let idx = scoreIndex[key]
                 let existing = this.scores[idx]
 
                 let cloudScore = rankEntry.score
@@ -800,8 +807,8 @@ export default class SaveManager {
                 let localScore = existing.score ?? 0
                 let localAcc = existing.score_accuracy ?? 0
 
-                let scoreImproved = cloudScore >= localScore
-                let accImproved = cloudAcc >= localAcc
+                let scoreImproved = cloudScore > localScore
+                let accImproved = cloudAcc > localAcc
                 let anyImproved = scoreImproved || accImproved
 
                 // 分数取最高
@@ -811,8 +818,7 @@ export default class SaveManager {
                     let sg = fCompute.getScoreGrade(cloudScore)
                     let gm = { 'R': 0, 'M': 1, 'SS': 2, 'S': 3, 'A': 4, 'B': 5, 'C': 6, 'F': 7 }
                     if (gm[sg] != null) { existing._bestLevel = gm[sg]; existing.grade = sg }
-                    // 云端分数 > 本地分数，可以覆写版本
-                    existing.game_version = rankEntry.game_version || 'v5.0'
+                    existing.game_version = cloudVer
                 }
 
                 // acc 取最高
@@ -859,29 +865,58 @@ export default class SaveManager {
 
                 this.scores[idx] = existing
             } else {
-                // 云端有但本地没有的新记录（可能因为存档格式不同步）
-                let newRecord = {
-                    chart_id: cid,
-                    score: rankEntry.score,
-                    score_accuracy: rankEntry.score_accuracy || 0,
-                    score_exact_count: rankEntry.score_exact_count || 0,
-                    score_perfect_count: rankEntry.score_perfect_count || 0,
-                    score_great_count: rankEntry.score_great_count || 0,
-                    score_good_count: rankEntry.score_good_count || 0,
-                    score_bad_count: rankEntry.score_bad_count || 0,
-                    score_miss_count: rankEntry.score_miss_count || 0,
-                    score_fracture_exact_count: rankEntry.score_fracture_exact_count || 0,
-                    score_fracture_miss_count: rankEntry.score_fracture_miss_count || 0,
-                    played_at: rankEntry.played_at || null,
-                    game_version: rankEntry.game_version || 'v5.0',
-                    grade: rankEntry.grade || '',
-                    _source: 'cloud_rank',
-                    _modifiers: modifiers,
-                    _cloudReality: rankEntry.reality || 0,
-                    _cloudEnriched: true
+                // 检查是否存在其他版本组的同谱面记录
+                // 跨版本组时作为独立记录添加（保留旧版记录用于 max(v2,v3) 计算）
+                // 定数为 0 的特殊谱面跨版本时直接合并，避免重复记录
+                let otherGroupKey = null
+                let otherGroup = cloudGroup === 'old' ? 'new' : 'old'
+                let altKey = `${cid}__${otherGroup}`
+                if (altKey in scoreIndex && this._isZeroDiffChart(cid)) {
+                    // 特殊谱面：合并到已有记录
+                    otherGroupKey = altKey
                 }
-                this.scores.push(newRecord)
-                mergedCount++
+
+                if (otherGroupKey) {
+                    // 定数为 0 的特殊谱面：合并到已有记录（跨版本公共）
+                    let idx = scoreIndex[otherGroupKey]
+                    let existing = this.scores[idx]
+                    if (rankEntry.score > (existing.score || 0)) {
+                        existing.score = rankEntry.score
+                        let sg = fCompute.getScoreGrade(rankEntry.score)
+                        let gm = { 'R': 0, 'M': 1, 'SS': 2, 'S': 3, 'A': 4, 'B': 5, 'C': 6, 'F': 7 }
+                        if (gm[sg] != null) { existing._bestLevel = gm[sg]; existing.grade = sg }
+                        existing.game_version = cloudVer
+                    }
+                    if ((rankEntry.score_accuracy ?? 0) > (existing.score_accuracy ?? 0)) {
+                        existing.score_accuracy = rankEntry.score_accuracy
+                    }
+                    if (!existing._cloudEnriched) { existing._cloudEnriched = true; enrichedCount++ }
+                    this.scores[idx] = existing
+                } else {
+                    // 新版本组记录，直接添加
+                    let newRecord = {
+                        chart_id: cid,
+                        score: rankEntry.score,
+                        score_accuracy: rankEntry.score_accuracy || 0,
+                        score_exact_count: rankEntry.score_exact_count || 0,
+                        score_perfect_count: rankEntry.score_perfect_count || 0,
+                        score_great_count: rankEntry.score_great_count || 0,
+                        score_good_count: rankEntry.score_good_count || 0,
+                        score_bad_count: rankEntry.score_bad_count || 0,
+                        score_miss_count: rankEntry.score_miss_count || 0,
+                        score_fracture_exact_count: rankEntry.score_fracture_exact_count || 0,
+                        score_fracture_miss_count: rankEntry.score_fracture_miss_count || 0,
+                        played_at: rankEntry.played_at || null,
+                        game_version: cloudVer,
+                        grade: rankEntry.grade || '',
+                        _source: 'cloud_rank',
+                        _modifiers: modifiers,
+                        _cloudReality: rankEntry.reality || 0,
+                        _cloudEnriched: true
+                    }
+                    this.scores.push(newRecord)
+                    mergedCount++
+                }
             }
         }
 
