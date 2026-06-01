@@ -91,10 +91,10 @@ export class milcloud extends milPluginBase {
         let auth = new MilthmCloudAuth(userId, clientId, clientSecret)
 
         // 检查是否已授权且 token 有效
-        if (auth.isBound()) {
+        if (await auth.isBound()) {
             let isValid = await auth.ensureValidToken()
             if (isValid) {
-                let missing = auth.getMissingScopes()
+                let missing = await auth.getMissingScopes()
                 if (missing.length === 0) {
                     send.send_with_At(e, `你已授权 Milthm 云存档，Token 自动续期中，无需重复授权\n如需更换账号，请先使用 /unbind 解除授权`)
                     return true
@@ -108,7 +108,7 @@ export class milcloud extends milPluginBase {
             }
             // token 已过期，清除旧 token 并继续新授权流程
             if (!isValid) {
-                auth.clearTokens()
+                await auth.clearTokens()
                 logger.debug('[mil-cloud] 用户旧 token 已过期，自动清除')
             }
         }
@@ -165,10 +165,10 @@ export class milcloud extends milPluginBase {
         let nyaAuth = new NyaProfilerAuth(userId, nyaApiKey)
 
         // 检查是否已授权
-        if (nyaAuth.isBound()) {
+        if (await nyaAuth.isBound()) {
             send.send_with_At(e,
                 `你已授权 Re Nya Profiler 查分器\n` +
-                `当前绑定用户名: ${nyaAuth.getUsername()}\n` +
+                `当前绑定用户名: ${await nyaAuth.getUsername()}\n` +
                 `如需更换账号，请先使用 /unbind 解除授权`
             )
             return true
@@ -365,7 +365,7 @@ export class milcloud extends milPluginBase {
 
         let auth = new MilthmCloudAuth(userId, clientId, clientSecret)
 
-        if (!auth.isBound()) {
+        if (!(await auth.isBound())) {
             send.send_with_At(e, `你还没有授权 Milthm 云存档！\n请先使用 /${Config.getUserCfg('config', 'cmdhead')} bind 进行授权`)
             return true
         }
@@ -373,7 +373,7 @@ export class milcloud extends milPluginBase {
         updatingUsers.add(userId)
 
         // 检查 scope 是否完整
-        let missingScopes = auth.getMissingScopes()
+        let missingScopes = await auth.getMissingScopes()
         if (missingScopes.length > 0) {
             await send.send_with_At(e,
                 `⚠️ 授权 Scope 缺少: ${missingScopes.join(', ')}\n` +
@@ -644,17 +644,17 @@ export class milcloud extends milPluginBase {
 
         let nyaAuth = new NyaProfilerAuth(userId, nyaApiKey)
 
-        if (!nyaAuth.isBound()) {
+        if (!(await nyaAuth.isBound())) {
             send.send_with_At(e, `你还没有授权 Re Nya Profiler！\n请先使用 /${Config.getUserCfg('config', 'cmdhead')} bind 进行授权`)
             return true
         }
 
-        let username = nyaAuth.getUsername()
+        let username = await nyaAuth.getUsername()
 
         // 0. 缓存有效期检查（以 userId 为 key，避免用户名冲突）
         let ttlHours = this._getNyaCacheTTL()
         let ttlSeconds = ttlHours * 3600
-        let cacheAge = NyaProfilerAuth.getCacheAge(userId)
+        let cacheAge = await NyaProfilerAuth.getCacheAge(userId)
         let cacheBlocked = cacheAge !== null && cacheAge < ttlSeconds
 
         updatingUsers.add(userId)
@@ -665,7 +665,7 @@ export class milcloud extends milPluginBase {
 
             if (cacheBlocked) {
                 // 缓存有效期内：使用缓存数据（不调用 API）
-                queryResult = NyaProfilerAuth.loadCache(userId)
+                queryResult = await NyaProfilerAuth.loadCache(userId)
                 fromCache = true
                 logger.info('[nya-profiler] TTL 保护：使用缓存数据, 缓存时间:', queryResult?.cachedAt)
             } else {
@@ -673,15 +673,15 @@ export class milcloud extends milPluginBase {
                 try {
                     send.send_with_At(e, "正在更新，请稍等一下哦！>_<", false, { recallMsg: 5 })
                     queryResult = await nyaAuth.queryUserData(username)
-                    NyaProfilerAuth.saveCache(userId, queryResult)
+                    await NyaProfilerAuth.saveCache(userId, queryResult)
                 } catch (err) {
                     if (err.message.includes('401') || err.message.includes('needAuth')) {
-                        nyaAuth.clearToken()
+                        await nyaAuth.clearToken()
                         send.send_with_At(e, `授权已过期，请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
                         return true
                     }
                     // API 失败时尝试使用缓存兜底
-                    let cached = NyaProfilerAuth.loadCache(userId)
+                    let cached = await NyaProfilerAuth.loadCache(userId)
                     if (cached) {
                         logger.warn('[nya-profiler] API 调用失败，使用缓存数据兜底:', err.message)
                         queryResult = cached
@@ -764,8 +764,8 @@ export class milcloud extends milPluginBase {
         // 清除 OIDC 授权
         if (clientId) {
             let auth = new MilthmCloudAuth(userId, clientId, clientSecret)
-            if (auth.isBound()) {
-                auth.clearTokens()
+            if (await auth.isBound()) {
+                await auth.clearTokens()
                 didUnbind = true
             }
         }
@@ -773,13 +773,13 @@ export class milcloud extends milPluginBase {
         // 清除 Nya Profiler 授权
         if (nyaApiKey) {
             let nyaAuth = new NyaProfilerAuth(userId, nyaApiKey)
-            if (nyaAuth.isBound()) {
+            if (await nyaAuth.isBound()) {
                 // 先获取用户名再清除
-                let username = nyaAuth.getUsername()
-                nyaAuth.clearToken()
+                let username = await nyaAuth.getUsername()
+                await nyaAuth.clearToken()
                 // 同时清除缓存（以 userId 为 key）
                 if (username) {
-                    NyaProfilerAuth.clearCache(userId)
+                    await NyaProfilerAuth.clearCache(userId)
                 }
                 didUnbind = true
             }

@@ -12,16 +12,10 @@
  *       建议客户端缓存结果。
  */
 
-import fs from 'node:fs'
 import logger from './Logger.js'
+import RedisStore from './RedisStore.js'
 
 const NYA_PROFILER_BASE_URL = 'https://renya.mhtl.im/api/external'
-
-/** Nya Profiler token 存储目录 */
-const NYA_TOKEN_DIR = `${process.cwd()}/plugins/mil-plugin/data/nya_tokens`
-
-/** Nya Profiler query 结果缓存目录 */
-const NYA_CACHE_DIR = `${process.cwd()}/plugins/mil-plugin/data/nya_cache`
 
 /**
  * @typedef {Object} NyaTokenData
@@ -69,29 +63,16 @@ export default class NyaProfilerAuth {
         this._token = null
     }
 
-    // ==================== Token 持久化 ====================
+    // ==================== Token 持久化（Redis + 文件迁移兼容） ====================
 
     /**
-     * 获取 token 文件路径
-     * @param {string} userId
-     * @returns {string}
+     * 加载授权信息（优先 Redis，自动从旧 JSON 文件迁移）
+     * @returns {Promise<NyaTokenData|null>}
      */
-    static tokenPath(userId) {
-        return `${NYA_TOKEN_DIR}/${userId}.json`
-    }
-
-    /**
-     * 加载本地存储的授权信息
-     * @returns {NyaTokenData|null}
-     */
-    loadToken() {
+    async loadToken() {
         try {
-            let path = NyaProfilerAuth.tokenPath(this.userId)
-            if (fs.existsSync(path)) {
-                let raw = fs.readFileSync(path, 'utf8')
-                this._token = JSON.parse(raw)
-                return this._token
-            }
+            this._token = await RedisStore.getNyaToken(this.userId)
+            return this._token
         } catch (e) {
             logger.error(`[nya-profiler] 加载 token 失败:`, e.message)
         }
@@ -99,30 +80,25 @@ export default class NyaProfilerAuth {
     }
 
     /**
-     * 保存授权信息到本地
+     * 保存授权信息到 Redis
+     * @returns {Promise<void>}
      */
-    saveToken() {
+    async saveToken() {
         try {
-            if (!fs.existsSync(NYA_TOKEN_DIR)) {
-                fs.mkdirSync(NYA_TOKEN_DIR, { recursive: true })
-            }
-            let path = NyaProfilerAuth.tokenPath(this.userId)
-            fs.writeFileSync(path, JSON.stringify(this._token, null, '\t'))
+            await RedisStore.setNyaToken(this.userId, this._token)
         } catch (e) {
             logger.error(`[nya-profiler] 保存 token 失败:`, e.message)
         }
     }
 
     /**
-     * 清除本地授权信息
+     * 清除授权信息（Redis + 旧文件一并清理）
+     * @returns {Promise<void>}
      */
-    clearToken() {
+    async clearToken() {
         this._token = null
         try {
-            let path = NyaProfilerAuth.tokenPath(this.userId)
-            if (fs.existsSync(path)) {
-                fs.unlinkSync(path)
-            }
+            await RedisStore.delNyaToken(this.userId)
         } catch (e) {
             logger.error(`[nya-profiler] 清除 token 失败:`, e.message)
         }
@@ -130,20 +106,20 @@ export default class NyaProfilerAuth {
 
     /**
      * 是否已授权
-     * @returns {boolean}
+     * @returns {Promise<boolean>}
      */
-    isBound() {
+    async isBound() {
         if (this._token) return true
-        this.loadToken()
+        await this.loadToken()
         return !!this._token
     }
 
     /**
      * 获取已授权的用户名
-     * @returns {string|null}
+     * @returns {Promise<string|null>}
      */
-    getUsername() {
-        if (!this.isBound()) return null
+    async getUsername() {
+        if (!(await this.isBound())) return null
         return this._token.username
     }
 
@@ -253,7 +229,7 @@ export default class NyaProfilerAuth {
                         username: result.username,
                         authorizedAt: new Date().toISOString()
                     }
-                    this.saveToken()
+                    await this.saveToken()
                     return result.username
                 }
 
@@ -302,42 +278,28 @@ export default class NyaProfilerAuth {
      * @returns {Promise<NyaQueryResult>}
      */
     async queryCurrentUserData() {
-        let username = this.getUsername()
+        let username = await this.getUsername()
         if (!username) {
             throw new Error('未授权或授权信息已失效，请重新绑定')
         }
         return await this.queryUserData(username)
     }
 
-    // ==================== 缓存管理 ====================
+    // ==================== 缓存管理（Redis + 文件迁移兼容） ====================
 
     /**
-     * 获取缓存文件路径（以 userId 作为唯一标识，避免用户名冲突）
-     * @param {string} userId - QQ号
-     * @returns {string}
-     */
-    static cachePath(userId) {
-        if (!fs.existsSync(NYA_CACHE_DIR)) {
-            fs.mkdirSync(NYA_CACHE_DIR, { recursive: true })
-        }
-        return `${NYA_CACHE_DIR}/${userId}.json`
-    }
-
-    /**
-     * 将查询结果缓存到本地
+     * 将查询结果缓存到 Redis
      * @param {string} userId - QQ号
      * @param {NyaQueryResult} data
+     * @returns {Promise<void>}
      */
-    static saveCache(userId, data) {
+    static async saveCache(userId, data) {
         try {
-            if (!fs.existsSync(NYA_CACHE_DIR)) {
-                fs.mkdirSync(NYA_CACHE_DIR, { recursive: true })
-            }
             let cacheData = {
                 ...data,
                 cachedAt: new Date().toISOString()
             }
-            fs.writeFileSync(NyaProfilerAuth.cachePath(userId), JSON.stringify(cacheData, null, '\t'))
+            await RedisStore.setNyaCache(userId, cacheData)
             logger.debug('[nya-profiler] 缓存已保存, userId:', userId, ', 用户名:', data.username)
         } catch (e) {
             logger.error('[nya-profiler] 保存缓存失败:', e.message)
@@ -345,16 +307,14 @@ export default class NyaProfilerAuth {
     }
 
     /**
-     * 从本地缓存加载查询结果
+     * 从 Redis 加载查询结果缓存
      * @param {string} userId - QQ号
-     * @returns {NyaQueryResult|null}
+     * @returns {Promise<NyaQueryResult|null>}
      */
-    static loadCache(userId) {
+    static async loadCache(userId) {
         try {
-            let path = NyaProfilerAuth.cachePath(userId)
-            if (fs.existsSync(path)) {
-                let raw = fs.readFileSync(path, 'utf8')
-                let data = JSON.parse(raw)
+            let data = await RedisStore.getNyaCache(userId)
+            if (data) {
                 logger.debug('[nya-profiler] 缓存已加载, userId:', userId,
                     ', 用户名:', data.username, ', 缓存时间:', data.cachedAt)
                 return data
@@ -368,15 +328,12 @@ export default class NyaProfilerAuth {
     /**
      * 获取缓存年龄（秒），无缓存返回 null
      * @param {string} userId - QQ号
-     * @returns {number|null}
+     * @returns {Promise<number|null>}
      */
-    static getCacheAge(userId) {
+    static async getCacheAge(userId) {
         try {
-            let path = NyaProfilerAuth.cachePath(userId)
-            if (!fs.existsSync(path)) return null
-            let raw = fs.readFileSync(path, 'utf8')
-            let data = JSON.parse(raw)
-            if (!data.cachedAt) return null
+            let data = await RedisStore.getNyaCache(userId)
+            if (!data || !data.cachedAt) return null
             let age = (Date.now() - new Date(data.cachedAt).getTime()) / 1000
             return Math.max(0, age)
         } catch {
@@ -385,15 +342,13 @@ export default class NyaProfilerAuth {
     }
 
     /**
-     * 清除缓存
+     * 清除缓存（Redis + 旧文件一并清理）
      * @param {string} userId - QQ号
+     * @returns {Promise<void>}
      */
-    static clearCache(userId) {
+    static async clearCache(userId) {
         try {
-            let path = NyaProfilerAuth.cachePath(userId)
-            if (fs.existsSync(path)) {
-                fs.unlinkSync(path)
-            }
+            await RedisStore.delNyaCache(userId)
         } catch (e) {
             logger.error('[nya-profiler] 清除缓存失败:', e.message)
         }

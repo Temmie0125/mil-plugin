@@ -1,11 +1,11 @@
 /**
  * Milthm 云存档认证模块
  * 使用 OIDC Device Authorization 流程进行认证
- * token 存储在 data/tokens/ 目录下（不会被 git 追踪）
+ * token 存储在 Redis 中（兼容从旧 JSON 文件自动迁移）
  */
-import fs from 'node:fs'
 import logger from './Logger.js'
 import Version from './Version.js'
+import RedisStore from './RedisStore.js'
 
 const MILTHM_API_BASE = 'https://milkloud.milthm.cn/api'
 const OIDC_DISCOVERY_URL = `${MILTHM_API_BASE}/oidc/.well-known/openid-configuration`
@@ -17,8 +17,6 @@ const USER_AGENT = `mil-plugin/${Version.ver} (YunzaiBot; MilthmCloud)`
 const DEFAULT_DEVICE_AUTH_ENDPOINT = `${MILTHM_API_BASE}/oidc/device_authorization`
 const DEFAULT_TOKEN_ENDPOINT = `${MILTHM_API_BASE}/oidc/oauth/token`
 const DEFAULT_USERINFO_ENDPOINT = `${MILTHM_API_BASE}/oidc/userinfo`
-const TOKEN_DIR = `${process.cwd()}/plugins/mil-plugin/data/tokens`
-
 /** 默认 scope：读取存档 + 离线续期（获取 refresh_token） */
 const DEFAULT_SCOPE = 'milthm:save:read offline_access milthm:event:recent milthm:stats:best_performance user'
 
@@ -55,29 +53,16 @@ export default class MilthmCloudAuth {
         this._oidcConfig = null
     }
 
-    // ==================== Token 持久化 ====================
+    // ==================== Token 持久化（Redis + 文件迁移兼容） ====================
 
     /**
-     * 获取 token 文件路径
-     * @param {string} userId
-     * @returns {string}
+     * 加载 token（优先 Redis，自动从旧 JSON 文件迁移）
+     * @returns {Promise<TokenData|null>}
      */
-    static tokenPath(userId) {
-        return `${TOKEN_DIR}/${userId}.json`
-    }
-
-    /**
-     * 加载本地存储的 token
-     * @returns {TokenData|null}
-     */
-    loadToken() {
+    async loadToken() {
         try {
-            let path = MilthmCloudAuth.tokenPath(this.userId)
-            if (fs.existsSync(path)) {
-                let raw = fs.readFileSync(path, 'utf8')
-                this._token = JSON.parse(raw)
-                return this._token
-            }
+            this._token = await RedisStore.getOidcToken(this.userId)
+            return this._token
         } catch (e) {
             logger.error(`[mil-cloud] 加载 token 失败:`, e.message)
         }
@@ -85,51 +70,46 @@ export default class MilthmCloudAuth {
     }
 
     /**
-     * 保存 token 到本地
+     * 保存 token 到 Redis
+     * @returns {Promise<void>}
      */
-    saveToken() {
+    async saveToken() {
         try {
-            if (!fs.existsSync(TOKEN_DIR)) {
-                fs.mkdirSync(TOKEN_DIR, { recursive: true })
-            }
-            let path = MilthmCloudAuth.tokenPath(this.userId)
-            fs.writeFileSync(path, JSON.stringify(this._token, null, '\t'))
+            await RedisStore.setOidcToken(this.userId, this._token)
         } catch (e) {
             logger.error(`[mil-cloud] 保存 token 失败:`, e.message)
         }
     }
 
     /**
-     * 清除本地 token
+     * 清除 token（Redis + 旧文件一并清理）
+     * @returns {Promise<void>}
      */
-    clearTokens() {
+    async clearTokens() {
         this._token = null
         try {
-            let path = MilthmCloudAuth.tokenPath(this.userId)
-            if (fs.existsSync(path)) {
-                fs.unlinkSync(path)
-            }
+            await RedisStore.delOidcToken(this.userId)
         } catch (e) {
             logger.error(`[mil-cloud] 清除 token 失败:`, e.message)
         }
     }
 
     /**
-     * 是否已授权（本地有 token）
-     * @returns {boolean}
+     * 是否已授权
+     * @returns {Promise<boolean>}
      */
-    isBound() {
+    async isBound() {
         if (this._token) return true
-        this.loadToken()
+        await this.loadToken()
         return !!this._token
     }
 
     /**
-     * 对比本地 token 的 scope 与插件需求，返回缺少的 scope 列表
-     * @returns {string[]} 缺少的 scope，空数组表示完整
+     * 对比 token 的 scope 与插件需求，返回缺少的 scope 列表
+     * @returns {Promise<string[]>} 缺少的 scope，空数组表示完整
      */
-    getMissingScopes() {
-        if (!this._token) this.loadToken()
+    async getMissingScopes() {
+        if (!this._token) await this.loadToken()
         let stored = new Set((this._token?.scope || '').split(' ').filter(Boolean))
         let required = new Set(DEFAULT_SCOPE.split(' ').filter(Boolean))
         return [...required].filter(s => !stored.has(s))
@@ -272,7 +252,7 @@ export default class MilthmCloudAuth {
                 scope: data.scope
             })
             this._token = this._buildTokenData(data)
-            this.saveToken()
+            await this.saveToken()
             return { success: true }
         }
 
@@ -306,7 +286,7 @@ export default class MilthmCloudAuth {
      */
     async refreshAccessToken() {
         if (!this._token || !this._token.refresh_token) {
-            this.loadToken()
+            await this.loadToken()
             if (!this._token || !this._token.refresh_token) {
                 return false
             }
@@ -335,7 +315,7 @@ export default class MilthmCloudAuth {
             let body = await resp.text()
             if (!resp.ok) {
                 logger.error(`[mil-cloud] 刷新 token 失败: HTTP ${resp.status}`, body)
-                this.clearTokens()
+                await this.clearTokens()
                 return false
             }
 
@@ -343,12 +323,12 @@ export default class MilthmCloudAuth {
             // 检查 OIDC 标准错误 (invalid_grant 等)
             if (data.error === 'invalid_grant') {
                 logger.error('[mil-cloud] 刷新 token 失败: invalid_grant（token 已失效），清除本地 token')
-                this.clearTokens()
+                await this.clearTokens()
                 return false
             }
             if (data.error) {
                 logger.error(`[mil-cloud] 刷新 token 失败: ${data.error}`, body)
-                this.clearTokens()
+                await this.clearTokens()
                 return false
             }
             // 更新 token（保留 refresh_token 如果服务端没返回新的）
@@ -357,7 +337,7 @@ export default class MilthmCloudAuth {
                 newToken.refresh_token = this._token.refresh_token
             }
             this._token = newToken
-            this.saveToken()
+            await this.saveToken()
 
             logger.debug('[mil-cloud] Token 刷新成功')
             return true
@@ -472,7 +452,7 @@ export default class MilthmCloudAuth {
      */
     async fetchCloudUser() {
         // 1) 优先：token 中已缓存的用户名
-        if (!this._token) this.loadToken()
+        if (!this._token) await this.loadToken()
         if (this._token && this._token.cloud_username) {
             logger.debug('[mil-cloud] 使用 token 缓存的用户名:', this._token.cloud_username)
             return {
@@ -509,7 +489,7 @@ export default class MilthmCloudAuth {
         // 拿到用户名后缓存到 token
         if (username && this._token) {
             this._token.cloud_username = username
-            this.saveToken()
+            await this.saveToken()
             logger.info(`[mil-cloud] 用户名已缓存到 token: ${username}`)
         }
 
