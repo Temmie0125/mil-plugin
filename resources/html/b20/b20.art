@@ -73,6 +73,16 @@
     </div>
 </div>
 
+{{if spInfo}}
+<div class="spInfoBox">
+    {{each spInfo v}}
+    <div class="spInfo colorful-background clip-box">
+        <p>{{v}}</p>
+    </div>
+    {{/each}}
+</div>
+{{/if}}
+
 <div class="b20">
     {{each scores song i}}
 

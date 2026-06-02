@@ -323,6 +323,10 @@ export class miluser extends milPluginBase {
                     fnc: 'b20'
                 },
                 {
+                    reg: `^[#/](${Config.getUserCfg('config', 'cmdhead')})(\\s*)(p|ap|P|AP)\\s*[0-9]*.*$`,
+                    fnc: 'p20'
+                },
+                {
                     reg: `^[#/](${Config.getUserCfg('config', 'cmdhead')})(\\s*)(com|cal|计算)(\\s+).*$`,
                     fnc: 'com'
                 },
@@ -581,7 +585,9 @@ export class miluser extends milPluginBase {
             background: bgIll,
             version: Version.ver
         }
-
+        if (!Config.getUserCfg('config', 'isGuild')) {
+            e.reply("正在生成图片，请稍等一下哦！\n//·/w\\·\\\\", false, { recallMsg: 5 })
+        }
         send.send_with_At(e, await picmodle.b20(data))
 
         // 云端/存档差异检测
@@ -590,6 +596,167 @@ export class miluser extends milPluginBase {
             let forwardMsg = await makeForwardMsg(e, diffMsgs, 'B20 云端/存档差异')
             await e.reply(forwardMsg)
         }
+
+        return true
+    }
+
+    /**
+     * P20 查询（All Perfect B20）
+     * 仅统计 acc=100%（AP）曲目的 Best 20 Reality
+     * 与 B20 复用同一渲染模板，添加 "All Perfect Mode" 标识
+     */
+    async p20(e) {
+        let save = await getSave.getSave(e.user_id)
+        if (!save || (!save.hasSave() && save.scores.length === 0)) {
+            send.send_with_At(e, `你还没有导入存档哦！\n请先使用/${Config.getUserCfg('config', 'cmdhead')} bind绑定存档，或者发送存档文件(.db)给BOT进行导入哦`)
+            return true
+        }
+
+        let msg = e.msg
+        let numMsg = msg.match(/^.*?(p|ap|P|AP)\s*([0-9]+)/i)?.[0]
+        let nnum = numMsg ? Number(numMsg.replace(/^.*?(p|ap|P|AP)\s*/i, '')) : 20
+        if (!nnum || nnum <= 22) nnum = 22
+
+        let maxNum = Config.getUserCfg('config', 'B20MaxNum') || 50
+        nnum = Math.min(nnum, maxNum)
+
+        let bestNum = 20
+        let fetchNum = Math.min(nnum + 2, maxNum + 2)
+
+        // 使用 AP 过滤的 Reality 计算
+        let { scores, reality } = save.getAP20WithReality(fetchNum, getInfo)
+        // 同时获取普通 B20 Reality 做比对
+        let { reality: normalReality } = save.getB20WithReality(20, getInfo)
+        let player = save.getPlayerInfo()
+
+        // 构建 stars / stats（与 b20 一致）
+        let starLevel = save.nyaStarCount ?? computeStarLevel(save, getInfo)
+
+        let stats
+        if (save.nyaChartProgress) {
+            let cp = save.nyaChartProgress
+            let diffOrder = ['DZ', 'SK', 'CB', 'CL']
+            stats = diffOrder.map(code => ({
+                title: code,
+                c: (cp[code]?.cl || cp[code]?.c || 0),
+                fc: (cp[code]?.fc || 0),
+                ap: (cp[code]?.ap || 0)
+            }))
+        } else {
+            stats = computeAllChartStats(save, getInfo).stats
+        }
+
+        // 构建成绩列表（与 b20 逻辑一致）
+        let allV3 = true
+        let scoreData = []
+        for (let i = 0; i < scores.length; i++) {
+            let record = scores[i]
+            let songKey = getInfo.chartIdToSongKey(record.chart_id)
+            let songName = record.chart_id
+            let songArtist = ''
+            let illustration = ''
+            let diffLevel = 'Drizzle'
+            let difficulty = record._difficulty || 0
+            let bpm = ''
+            let totalCombo = 1
+
+            if (songKey) {
+                let info = getInfo.info(songKey)
+                if (info) {
+                    songName = info.song || songKey
+                    songArtist = info.artist || ''
+                    illustration = info.illustration || ''
+                    for (let level of fCompute.Level) {
+                        if (info.chart[level]?.chartid === record.chart_id) {
+                            diffLevel = level
+                            difficulty = info.chart[level].difficulty || 0
+                            bpm = info.chart[level].bpm || ''
+                            totalCombo = info.chart[level].combo || 1
+                            break
+                        }
+                    }
+                }
+            }
+
+            let gradeInfo = getGradeForRecord(record, { combo: totalCombo })
+            let singleRlt = record._reality || calcReality(record.score, difficulty, parseGameVersion(record.game_version), record.score_accuracy)
+
+            if (i < bestNum) {
+                let gv = parseGameVersion(record.game_version)
+                if (gv < 4.0) allV3 = false
+            }
+
+            let pushText = null, pushClass = ''
+            try {
+                let pushSuggestion = calcPushSuggestion({
+                    currentReality: reality,
+                    b20Scores: scores,
+                    targetChartId: record.chart_id,
+                    chartDifficulty: difficulty,
+                    chartBestScore: record._displayScore != null ? record._displayScore : record.score,
+                    chartBestReality: singleRlt
+                })
+                if (pushSuggestion) {
+                    let formatted = formatPushDisplay(pushSuggestion.achievable ? pushSuggestion.targetScore : '无法推分')
+                    pushText = formatted.pushText
+                    pushClass = formatted.pushClass
+                }
+            } catch {}
+            let displayScore = record._displayScore != null ? record._displayScore : record.score
+            let displayAcc = record._displayAccuracy != null ? record._displayAccuracy : (record.score_accuracy || 0)
+            scoreData.push({
+                song: songName,
+                artist: songArtist,
+                illustration,
+                level: diffLevel,
+                levelAbbr: fCompute.LevelAbbr[diffLevel] || diffLevel,
+                difficulty,
+                bpm,
+                score: displayScore,
+                accuracy: displayAcc,
+                reality: singleRlt,
+                grade: gradeInfo.grade,
+                gradeIcon: gradeInfo.iconName,
+                exact: record.score_exact_count || 0,
+                perfect: record.score_perfect_count || 0,
+                great: record.score_great_count || 0,
+                good: record.score_good_count || 0,
+                bad: record.score_bad_count || 0,
+                miss: record.score_miss_count || 0,
+                isOverflow: i >= bestNum,
+                pushText,
+                pushClass
+            })
+        }
+
+        let bgIll = getInfo.getill(getInfo.all_id[fCompute.randBetween(0, getInfo.all_id.length - 1)] || '')
+
+        let data = {
+            avatar: randomAvatar(),
+            username: player.username,
+            reality,
+            realityIcon: allV3 ? 'reality_v3' : 'reality',
+            starLevel,
+            scores: scoreData.slice(0, nnum),
+            overflowIndex: bestNum,
+            stats,
+            updateTime: fCompute.formatDate(new Date().toISOString()),
+            background: bgIll,
+            version: Version.ver,
+            spInfo: ['All Perfect Mode']
+        }
+
+        let res = []
+        if (!Config.getUserCfg('config', 'isGuild')) {
+            e.reply("正在生成图片，请稍等一下哦！\n//·/w\\·\\\\", false, { recallMsg: 5 })
+        }
+        res.push(await picmodle.b20(data))
+        // 追加文本：计算 Reality vs 存档 Reality
+        res.push(`计算AP Reality：${reality.toFixed(4)}\n存档Reality：${normalReality.toFixed(4)}`)
+        if (scores.length < 20) {
+            res.push(`AP 曲目不足 20 首（当前仅 ${scores.length} 首），Reality 仅基于已有数据计算`)
+        }
+        send.send_with_At(e, res)
 
         return true
     }
@@ -858,6 +1025,7 @@ export class miluser extends milPluginBase {
                     list: [
                         { title: '发送 saves.db 文件', desc: '导入存档（推荐 saves.db，数据更精确）' },
                         { title: `/${cmd} b20 [数量]`, desc: '查询 Best 成绩，例: /mil b30' },
+                        { title: `/${cmd} p20 [数量]`, desc: '查询 All Perfect Best 成绩，例: /mil p20' },
                         { title: `/${cmd} score <曲名>`, desc: '单曲成绩明细' },
                         { title: `/${cmd} recent`, desc: '最近一次游玩记录' },
                         { title: `/${cmd} data`, desc: '数据统计' },

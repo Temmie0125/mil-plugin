@@ -553,3 +553,29 @@ body p {
 .overflow-song {
     opacity: 0.6;
 }
+
+/* ====== 模式标签（如 All Perfect Mode） ====== */
+
+.spInfoBox {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+
+.spInfo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 16px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #ff82e4, #ffe082);
+}
+
+.spInfo p {
+    color: #222;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 0 0 3px rgba(255, 255, 255, 0.6);
+}

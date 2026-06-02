@@ -571,6 +571,71 @@ export default class SaveManager {
     }
 
     /**
+     * 获取 AP20（All Perfect B20）—— 仅统计 acc=100% 的曲目
+     * 筛选逻辑与 getB20WithReality 一致，只是预先过滤为非 AP 记录。
+     * 兼容旧版存档（data.db / saves.db）：accuracy >= 0.9999 即视为 AP。
+     * @param {number} n - 获取数量
+     * @param {object} getInfo - getInfo 实例
+     * @returns {{ scores: object[], reality: number }}
+     */
+    getAP20WithReality(n = 20, getInfo) {
+        this.ensureLoaded()
+
+        // 1. 筛选 AP 记录（acc >= 99.99% 即视为 All Perfect）
+        let apScores = this.scores.filter(s => (s.score_accuracy || 0) >= 0.9999)
+
+        // 2. 为每条 AP 成绩计算 Reality
+        let scored = apScores.map(record => {
+            let singleRlt, difficulty
+            if (record._nyaSingleRating != null) {
+                singleRlt = record._nyaSingleRating
+                difficulty = record._nyaDifficulty || 0
+            } else {
+                difficulty = this.getChartDifficulty(record.chart_id, getInfo)
+                let gameVer = parseGameVersion(record.game_version)
+                singleRlt = calcReality(record.score, difficulty, gameVer, record.score_accuracy)
+            }
+            return { ...record, _reality: singleRlt, _difficulty: difficulty }
+        })
+
+        // 3. 按 chart_id 分组取最高 Reality
+        let bestPerChart = {}
+        let maxScorePerChart = {}
+        for (let s of scored) {
+            let cid = s.chart_id
+            if (!bestPerChart[cid] || s._reality > bestPerChart[cid]._reality) {
+                bestPerChart[cid] = s
+            }
+            if (!maxScorePerChart[cid] || s.score > maxScorePerChart[cid].score) {
+                maxScorePerChart[cid] = { score: s.score, accuracy: s.score_accuracy || 0 }
+            }
+        }
+        let bestList = Object.values(bestPerChart)
+
+        // 4. 按 Reality 降序，同 Reality 按分数降序（匹配 B20 排序规则）
+        bestList.sort((a, b) => b._reality - a._reality || b.score - a.score)
+
+        // 5. 取前 N
+        let topN = bestList.slice(0, Math.min(n, bestList.length)).map(s => {
+            let cid = s.chart_id
+            let maxInfo = maxScorePerChart[cid]
+            return {
+                ...s,
+                _displayScore: maxInfo ? maxInfo.score : s.score,
+                _displayAccuracy: maxInfo ? maxInfo.accuracy : (s.score_accuracy || 0)
+            }
+        })
+
+        // 6. 计算 AP20 Reality
+        let top20 = topN.slice(0, Math.min(20, topN.length))
+        let reality = top20.length > 0
+            ? top20.reduce((sum, s) => sum + s._reality, 0) / top20.length
+            : 0
+
+        return { scores: topN, reality }
+    }
+
+    /**
      * 将当前成绩导出为纯数组（供 diff 比对用）
      * @returns {object[]}
      */
