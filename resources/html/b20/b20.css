@@ -235,7 +235,8 @@ body p {
     flex-direction: column;
     z-index: 5;
     gap: 8px;
-    padding: 0 20px;
+    width: 1090px;
+    margin: 0 auto;
 }
 
 .b20-row {
