@@ -754,7 +754,7 @@ export class miluser extends milPluginBase {
         // 追加文本：计算 Reality vs 存档 Reality
         res.push(`计算AP Reality：${reality.toFixed(4)}\n存档Reality：${normalReality.toFixed(4)}`)
         if (scores.length < 20) {
-            res.push(`AP 曲目不足 20 首（当前仅 ${scores.length} 首），Reality 仅基于已有数据计算`)
+            res.push(`\nAP 曲目不足 20 首（当前仅 ${scores.length} 首），Reality 仅基于已有数据计算`)
         }
         send.send_with_At(e, res)
 
