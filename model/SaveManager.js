@@ -547,8 +547,8 @@ export default class SaveManager {
         }
         let bestList = Object.values(bestPerChart)
 
-        // 3. 按 Reality 从高到低排序
-        bestList.sort((a, b) => b._reality - a._reality)
+        // 3. 按 Reality 从高到低排序，Reality 相同时按分数降序（匹配云端 Rank 的排序规则）
+        bestList.sort((a, b) => b._reality - a._reality || b.score - a.score)
 
         // 4. 取前 N，附上该谱面的最高分（游戏内显示最高分而非计算 Reality 那版的分数）
         let topN = bestList.slice(0, Math.min(n, bestList.length)).map(s => {
@@ -1122,7 +1122,7 @@ export default class SaveManager {
             }
         }
         let bestList = Object.values(bestPerChart)
-        bestList.sort((a, b) => b.reality - a.reality)
+        bestList.sort((a, b) => b.reality - a.reality || b.score - a.score)
 
         let top20 = bestList.slice(0, 20)
         let reality = top20.length > 0
@@ -1134,6 +1134,9 @@ export default class SaveManager {
 
     /**
      * 比较云端 B20 与存档 B20，生成差异文本
+     * 边界平局消解：若本地 B20 的末位曲目与云端 B20 的末位曲目 Reality 相同
+     * 但因排序差异而互换了位置，则不作为差异报告（避免 All Perfect 等
+     * 同定数曲目打新成绩后 B20 边界漂移导致的误报）。
      * @param {object} getInfo
      * @returns {string[]|null} 差异消息数组（每条曲目一行），无差异时返回 null
      */
@@ -1145,12 +1148,52 @@ export default class SaveManager {
             return null  // 无云端数据，无法对比
         }
 
-        // 构建云端 chart_id → reality 映射
+        // 云端 top 20 chart_id → reality 映射
         let cloudMap = {}
         for (let s of cloudB20.scores) {
             cloudMap[s.chart_id] = s.reality
         }
 
+        // 本地 top 20 chart_id 集合
+        let localB20Set = new Set(saveB20.scores.slice(0, 20).map(s => s.chart_id))
+
+        // 本地全部 chart_id 集合（用于判断云端 B20 曲目是否在本地存在）
+        let localAllSet = new Set(this.scores.map(s => s.chart_id))
+
+        // ---- 边界平局消解 ----
+        // 当 #20 附近存在多个 Reality 相同的曲目时，本地和云端可能因排序不同
+        // 而选择不同的曲目进入 B20，这不代表真正的数据差异
+        const TIE_THRESHOLD = 0.0005
+
+        /** 在本地 B20 但不在云端 B20 的曲目（疑似"缺失"候选） */
+        let localOnlyInB20 = []
+        for (let s of saveB20.scores.slice(0, 20)) {
+            if (!(s.chart_id in cloudMap)) {
+                localOnlyInB20.push(s)
+            }
+        }
+
+        /** 在云端 B20 但不在本地 B20、且本地数据中存在的曲目（边界互换候选） */
+        let cloudOnlyInB20 = []
+        for (let s of cloudB20.scores) {
+            if (!localB20Set.has(s.chart_id) && localAllSet.has(s.chart_id)) {
+                cloudOnlyInB20.push(s)
+            }
+        }
+
+        // 匹配边界平局：若 localOnly X 与 cloudOnly Y 的 Reality 差值 ≤ 阈值，
+        // 则 X 视为因排序边界平局被挤出云端 B20，非真正的数据缺失
+        let tieResolved = new Set()
+        for (let lo of localOnlyInB20) {
+            for (let co of cloudOnlyInB20) {
+                if (Math.abs(lo._reality - co.reality) <= TIE_THRESHOLD) {
+                    tieResolved.add(lo.chart_id)
+                    break
+                }
+            }
+        }
+
+        // ---- 生成差异 ----
         /** @type {{ chart_id: string, song: string, level: string, saveRlt: number, cloudRlt: number|null }[]} */
         let diffs = []
 
@@ -1159,8 +1202,12 @@ export default class SaveManager {
             let saveRlt = s._reality || 0
             let cloudRlt = cloudMap[cid] ?? null
 
-            // 差异阈值 0.005
-            if (cloudRlt == null || Math.abs(saveRlt - cloudRlt) > 0.005) {
+            if (cloudRlt == null || Math.abs(saveRlt - cloudRlt) > TIE_THRESHOLD) {
+                // 边界平局消解：不在云端 B20 但存在互换曲目 → 跳过
+                if (cloudRlt == null && tieResolved.has(cid)) {
+                    continue
+                }
+
                 let songKey = getInfo.chartIdToSongKey(cid)
                 let info = songKey ? getInfo.info(songKey) : null
                 let songName = info?.song || cid
