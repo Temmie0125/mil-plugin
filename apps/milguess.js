@@ -128,6 +128,10 @@ export class MilGames extends milPluginBase {
         if (!e.msg) {
             return false;
         }
+        /** 过滤Bot自己的消息，防止循环调用 */
+        if (e.user_id == Bot.uin || e.user_id == e.self_id){
+            return false;
+        }
         switch (gameList[e.group_id]?.gameType) {
             case "guessLetter": {
                 logger.info(`[mil-games][guess][letter] ${e.msg}`)
