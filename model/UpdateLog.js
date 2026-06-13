@@ -245,6 +245,16 @@ export default class UpdateLog {
             return { ...s, _rlt: rlt, _diff: difficulty }
         })
 
+        // 按 chart_id 追踪最高分记录（用于显示，与 getB20WithReality 的 maxScorePerChart 一致）
+        // 同一谱面的 V2/V3 版本 Reality 最高的用于排名，但显示分应取最高分版本
+        let maxScorePerChart = {}
+        for (let s of scored) {
+            let cid = s.chart_id
+            if (!maxScorePerChart[cid] || s.score > maxScorePerChart[cid].score) {
+                maxScorePerChart[cid] = { score: s.score, accuracy: s.score_accuracy || 0, record: s }
+            }
+        }
+
         // 按 Reality 降序
         scored.sort((a, b) => b._rlt - a._rlt || b.score - a.score)
 
@@ -258,7 +268,19 @@ export default class UpdateLog {
             if (displayList.length >= 10) break
         }
 
-        let changes = displayList.map(s => this._buildSongDiff(s, null, s._diff))
+        let changes = displayList.map(s => {
+            let diff = this._buildSongDiff(s, null, s._diff)
+            // 若该谱面有更高分的版本组记录，用最高分覆盖显示分和评级
+            let maxInfo = maxScorePerChart[s.chart_id]
+            if (maxInfo && maxInfo.score > s.score) {
+                diff.afterScore = maxInfo.score
+                diff.afterAccuracy = maxInfo.accuracy
+                let gradeInfo = this._getGradeForRecord(maxInfo.record)
+                diff.afterGrade = gradeInfo.iconName
+                diff.afterGradeLabel = gradeInfo.grade
+            }
+            return diff
+        })
 
         // 兜底：如果 changes 为空但有数据，用第 1 条强制构建
         if (changes.length === 0 && scored.length > 0) {

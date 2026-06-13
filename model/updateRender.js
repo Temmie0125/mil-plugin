@@ -99,10 +99,18 @@ export async function renderUpdateImage(userId, entry) {
             afterScore: card.afterScore
         }))
 
+        // 检查是否已达到展示上限，若当前组会超出则修剪以精确匹配 maxCards
+        let currentCount = dateGroups.reduce((sum, g) => sum + g.songs.length, 0)
+        if (currentCount >= maxCards) break
+
+        let remaining = maxCards - currentCount
+        if (songs.length > remaining) {
+            songs = songs.slice(0, remaining)
+        }
+
         dateGroups.push({ date: h.date, color, total, songs })
 
-        let cardCount = dateGroups.reduce((sum, g) => sum + g.songs.length, 0)
-        if (cardCount >= maxCards) break
+        if (currentCount + songs.length >= maxCards) break
     }
 
     // 仿 phi-plugin 的 flag 模式构建 box_line

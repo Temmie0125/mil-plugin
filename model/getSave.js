@@ -38,9 +38,10 @@ class GetSave {
      * 每次导入都记录更新条目（首次导入取 top 6，后续记录 diff）
      * @param {string} userId
      * @param {string} filePath
-     * @returns {Promise<{success: boolean, msg: string, username?: string, updateEntry?: object}>}
+     * @param {{noRecord?: boolean}} [opts] - noRecord=true 时跳过记录更新（调用方自行记录）
+     * @returns {Promise<{success: boolean, msg: string, username?: string, updateEntry?: object, saveType?: string, _oldScores?: object[]|null}>}
      */
-    async importSave(userId, filePath) {
+    async importSave(userId, filePath, opts = {}) {
         // 1. 导入前捕获旧成绩（内存没有则尝试从磁盘缓存恢复）
         let oldScores = this._captureOldScores(userId)
 
@@ -51,9 +52,13 @@ class GetSave {
         if (result.success) {
             this.saves[userId] = save
 
-            // 3. 始终记录更新条目
-            let updateEntry = this._recordUpdate(userId, oldScores, save.scores, result.username || 'Unknown')
-            return { ...result, updateEntry }
+            if (!opts.noRecord) {
+                // 3. 始终记录更新条目
+                let updateEntry = this._recordUpdate(userId, oldScores, save.scores, result.username || 'Unknown')
+                return { ...result, updateEntry }
+            }
+            // 不记录时仍返回 oldScores 供调用方后续使用
+            result._oldScores = oldScores
         }
         return result
     }
@@ -63,9 +68,10 @@ class GetSave {
      * 每次导入都记录更新条目
      * @param {string} userId
      * @param {string} jsonStr - 云存档 JSON 字符串
-     * @returns {{success: boolean, msg: string, username?: string, saveType?: string, updateEntry?: object}}
+     * @param {{noRecord?: boolean}} [opts] - noRecord=true 时跳过记录更新（调用方自行记录）
+     * @returns {{success: boolean, msg: string, username?: string, saveType?: string, updateEntry?: object, _oldScores?: object[]|null}}
      */
-    importFromJSON(userId, jsonStr) {
+    importFromJSON(userId, jsonStr, opts = {}) {
         // 1. 导入前捕获旧成绩（内存没有则尝试从磁盘缓存恢复）
         let oldScores = this._captureOldScores(userId)
 
@@ -77,9 +83,13 @@ class GetSave {
             this.saves[userId] = save
             save.saveCache()
 
-            // 3. 始终记录更新条目
-            let updateEntry = this._recordUpdate(userId, oldScores, save.scores, result.username || 'Unknown')
-            return { ...result, updateEntry }
+            if (!opts.noRecord) {
+                // 3. 始终记录更新条目
+                let updateEntry = this._recordUpdate(userId, oldScores, save.scores, result.username || 'Unknown')
+                return { ...result, updateEntry }
+            }
+            // 不记录时仍返回 oldScores 供调用方后续使用
+            result._oldScores = oldScores
         }
         return result
     }

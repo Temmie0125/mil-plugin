@@ -540,14 +540,14 @@ export class milcloud extends milPluginBase {
                 if (isJSON) {
                     let jsonStr = fileBuffer.toString('utf8')
                     logger.debug('[mil-cloud] 检测到 JSON 格式云存档，直接解析')
-                    result = getSave.importFromJSON(userId, jsonStr)
+                    result = getSave.importFromJSON(userId, jsonStr, { noRecord: true })
                 } else {
                     logger.debug('[mil-cloud] 检测到二进制格式存档，按 SQLite 导入')
                     let dataDir = `${Plugin_Path}/data/saves`
                     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true })
                     let tempPath = `${Plugin_Path}/data/temp_cloud_${userId}.db`
                     fs.writeFileSync(tempPath, fileBuffer)
-                    result = await getSave.importSave(userId, tempPath)
+                    result = await getSave.importSave(userId, tempPath, { noRecord: true })
                     try { fs.unlinkSync(tempPath) } catch { }
                 }
 
@@ -566,7 +566,15 @@ export class milcloud extends milPluginBase {
                     save.importFromCloudRecent(recentRecords)
                 }
 
-                let updateImg = await renderUpdateImage(userId, result.updateEntry)
+                // 富化后再记录更新条目，确保 Reality 和成绩与 b20 命令一致
+                let updateEntry = getSave._recordUpdate(
+                    userId,
+                    result._oldScores ?? null,
+                    save.scores,
+                    save.username || result.username || 'Unknown'
+                )
+
+                let updateImg = await renderUpdateImage(userId, updateEntry)
                 send.send_with_At(e, updateImg)
 
                 // Reality 不一致提示
