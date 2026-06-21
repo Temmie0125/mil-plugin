@@ -25,6 +25,9 @@ mutiNickWaitTimeOut: 30
 #  是否开启频道模式
 isGuild: false
 
+#  是否开启官方Bot模式（开启后存档差异仅限私信 + 授权链接转为二维码）
+officialBotMode: false
+
 #  ************ 【曲绘资源】 *************
 
 #  曲绘仓库地址（Git 克隆地址）

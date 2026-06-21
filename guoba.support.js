@@ -109,6 +109,12 @@ export function supportGuoba() {
                     component: 'Switch',
                 },
                 {
+                    field: 'officialBotMode',
+                    label: '官Bot模式',
+                    bottomHelpMessage: '开启后存档差异仅限私信发送（避免合并转发失败），授权链接自动转为二维码',
+                    component: 'Switch',
+                },
+                {
                     label: '',
                     component: 'Divider'
                 },

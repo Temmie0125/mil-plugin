@@ -4,7 +4,7 @@ import getInfo from '../model/getInfo.js'
 import fCompute from '../model/fCompute.js'
 import { calcReality, realityv2, realityv3, parseGameVersion } from '../model/reality.js'
 import { calcPushSuggestion } from '../model/pushSuggestion.js'
-import { getFileInfo, getFileContent, makeForwardMsg } from '../components/common.js'
+import { getFileInfo, getFileContent, makeForwardMsg, sendB20Diff } from '../components/common.js'
 import getSave from '../model/getSave.js'
 import SaveManager from '../model/SaveManager.js'
 import UpdateLog from '../model/UpdateLog.js'
@@ -593,8 +593,7 @@ export class miluser extends milPluginBase {
         // 云端/存档差异检测
         let diffMsgs = save.getB20DiffText(getInfo)
         if (diffMsgs) {
-            let forwardMsg = await makeForwardMsg(e, diffMsgs, 'B20 云端/存档差异')
-            await e.reply(forwardMsg)
+            await sendB20Diff(e, diffMsgs)
         }
 
         return true

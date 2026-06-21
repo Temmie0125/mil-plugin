@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import Config from './Config.js';
+
 /**
  *
  * 制作转发消息
@@ -50,6 +52,24 @@ export async function makeForwardMsg(e, msg = [], dec = '') {
     }
     return forwardMsg
 }
+
+/**
+ * 发送 B20 差异消息（官Bot模式适配）
+ * 官Bot 不支持合并转发，群聊中改为简短文字提示，引导用户私聊查看
+ * @param e - 事件对象
+ * @param diffMsgs - 差异消息数组
+ * @param dec - 合并转发标题（非官Bot模式时使用）
+ * @returns {Promise<void>}
+ */
+export async function sendB20Diff(e, diffMsgs, dec = 'B20 云端/存档差异') {
+    if (Config.getUserCfg('config', 'officialBotMode') && e.isGroup) {
+        await e.reply('检测到存档差异，请私聊Bot查看详情~', true)
+        return
+    }
+    let forwardMsg = await makeForwardMsg(e, diffMsgs, dec)
+    await e.reply(forwardMsg)
+}
+
 /**
  * 权限检查（群管理员或主人）
  * @param {*} e 

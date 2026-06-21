@@ -15,10 +15,12 @@ import fCompute from '../model/fCompute.js'
 import { buildRksHistory, renderUpdateImage } from '../model/updateRender.js'
 import milPluginBase from '../components/baseClass.js'
 import logger from '../components/Logger.js'
-import { makeForwardMsg } from '../components/common.js'
+import { sendB20Diff } from '../components/common.js'
 import MilthmCloudAuth from '../components/MilthmCloudAuth.js'
 import NyaProfilerAuth from '../components/NyaProfilerAuth.js'
 import SaveManager from '../model/SaveManager.js'
+import QRCode from 'qrcode'
+import { segment } from 'oicq'
 import fs from 'node:fs'
 
 const Plugin_Path = `${process.cwd()}/plugins/mil-plugin`
@@ -75,6 +77,68 @@ export class milcloud extends milPluginBase {
     }
 
     /**
+     * 发送授权消息（官Bot模式适配）
+     * 官Bot 模式下将授权链接转为二维码图片，普通模式发送文本链接
+     * @param e - 事件对象
+     * @param url - 授权链接
+     * @param userCode - 用户码（OIDC 流程，可选）
+     * @param type - 授权类型 ('oidc' | 'nya')
+     */
+    async _sendAuthMessage(e, url, userCode = null, type = 'oidc') {
+        if (Config.getUserCfg('config', 'officialBotMode')) {
+            // 官Bot模式：生成二维码图片
+            let qrBuf
+            try {
+                qrBuf = await QRCode.toBuffer(url, { width: 300, margin: 2 })
+            } catch (err) {
+                logger.error('[mil-cloud] 二维码生成失败:', err)
+                // 降级：发送文本链接
+                let fallbackMsg = userCode
+                    ? `Milthm 云存档授权\n请在浏览器打开以下链接完成授权：\n${url}\n或手动输入用户码: ${userCode}`
+                    : `Re Nya Profiler 查分器授权\n请在浏览器打开以下链接完成授权：\n${url}`
+                return await send.send_with_At(e, fallbackMsg, false, { recallMsg: 120 })
+            }
+
+            // 写入临时文件并发送图片
+            let qrPath = `${Plugin_Path}/data/temp_qr_${e.user_id}.png`
+            try {
+                fs.writeFileSync(qrPath, qrBuf)
+            } catch (err) {
+                logger.error('[mil-cloud] 二维码文件写入失败:', err)
+                return await send.send_with_At(e, '二维码生成失败，请稍后重试~')
+            }
+
+            let imgSegment = segment.image(qrPath)
+            let promptText = userCode
+                ? `Milthm 云存档授权\n请使用手机扫描下方二维码完成授权\n用户码: ${userCode}\n\n链接将在授权完成后撤回，请尽快完成授权\n3 分钟内未完成授权将自动取消`
+                : `Re Nya Profiler 查分器授权\n请使用手机扫描下方二维码完成授权\n\n链接将在授权完成后撤回，请尽快完成授权\n2 分钟内未完成授权将自动取消`
+
+            let authMsg = await send.send_with_At(e, [imgSegment, `\n${promptText}`], false, { recallMsg: 120 })
+
+            // 异步清理临时文件
+            setTimeout(() => {
+                try { fs.unlinkSync(qrPath) } catch { }
+            }, 5000)
+
+            return authMsg
+        } else {
+            // 普通模式：发送文本链接
+            let msgText = userCode
+                ? `Milthm 云存档授权\n` +
+                  `请在浏览器打开下方链接完成授权：\n${url}\n` +
+                  `或手动输入用户码: ${userCode}\n\n` +
+                  `链接将在授权完成后撤回，请尽快完成授权\n` +
+                  `3 分钟内未完成授权将自动取消`
+                : `Re Nya Profiler 查分器授权\n` +
+                  `请在浏览器打开下方链接完成授权：\n${url}\n\n` +
+                  `链接将在授权完成后撤回，请尽快完成授权\n` +
+                  `2 分钟内未完成授权将自动取消`
+
+            return await send.send_with_At(e, msgText, false, { recallMsg: 120 })
+        }
+    }
+
+    /**
      * 官方 OIDC 授权流程
      */
     async _bindOIDC(e) {
@@ -123,15 +187,12 @@ export class milcloud extends milPluginBase {
             return true
         }
 
-        // 发送授权链接给用户，120 秒后自动撤回（授权成功时提前撤回）
-        let authMsg = await send.send_with_At(e,
-            `Milthm 云存档授权\n` +
-            `请在浏览器打开下方链接完成授权：\n${deviceAuthInfo.verification_uri_complete}\n` +
-            `或手动输入用户码: ${deviceAuthInfo.user_code}\n\n` +
-            `链接将在授权完成后撤回，请尽快完成授权\n` +
-            `3 分钟内未完成授权将自动取消`,
-            false,
-            { recallMsg: 120 }
+        // 发送授权消息（官Bot模式自动转二维码）
+        let authMsg = await this._sendAuthMessage(
+            e,
+            deviceAuthInfo.verification_uri_complete,
+            deviceAuthInfo.user_code,
+            'oidc'
         )
 
         // 开始轮询（3 分钟超时自动取消）
@@ -184,14 +245,12 @@ export class milcloud extends milPluginBase {
             return true
         }
 
-        // 发送授权链接给用户
-        let authMsg = await send.send_with_At(e,
-            `Re Nya Profiler 查分器授权\n` +
-            `请在浏览器打开下方链接完成授权：\n${authInfo.url}\n\n` +
-            `链接将在授权完成后撤回，请尽快完成授权\n` +
-            `2 分钟内未完成授权将自动取消`,
-            false,
-            { recallMsg: 120 }
+        // 发送授权消息（官Bot模式自动转二维码）
+        let authMsg = await this._sendAuthMessage(
+            e,
+            authInfo.url,
+            null,
+            'nya'
         )
 
         // 开始轮询（2 分钟超时）
@@ -593,8 +652,7 @@ export class milcloud extends milPluginBase {
                 // 逐曲差异提示
                 let diffMsgs = save.getB20DiffText(getInfo)
                 if (diffMsgs) {
-                    let forwardMsg = await makeForwardMsg(e, diffMsgs, 'B20 云端/存档差异')
-                    await e.reply(forwardMsg)
+                    await sendB20Diff(e, diffMsgs)
                 }
             } else {
                 if (recentUpdateEntry) {
@@ -612,8 +670,7 @@ export class milcloud extends milPluginBase {
                 // 逐曲差异提示（未触发全量时也检测）
                 let diffMsgs2 = save.getB20DiffText(getInfo)
                 if (diffMsgs2) {
-                    let forwardMsg = await makeForwardMsg(e, diffMsgs2, 'B20 云端/存档差异')
-                    await e.reply(forwardMsg)
+                    await sendB20Diff(e, diffMsgs2)
                 }
             }
         } catch (err) {
