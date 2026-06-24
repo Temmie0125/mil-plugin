@@ -333,10 +333,11 @@ export default class UpdateLog {
             let oldRec = oldMap[chartId]
             if (!oldRec) {
                 changes.push(this._buildSongDiff(newRec, null))
-            } else if (newRec.score > oldRec.score) {
+            } else if (newRec.score > oldRec.score
+                || (newRec.score_accuracy || 0) > (oldRec.score_accuracy || 0)
+                || this._getGradeForRecord(newRec).iconName !== this._getGradeForRecord(oldRec).iconName) {
                 changes.push(this._buildSongDiff(newRec, oldRec))
             }
-            // 分数未变则跳过
         }
 
         // 按 Reality 提升量排序（降序），再按分数差
