@@ -364,7 +364,7 @@ export class miluser extends milPluginBase {
         if (!fileInfo) {
             return false;
         }
-        const { fileName, fileId, busid } = fileInfo;
+        const { fileName, fileId, busid, fileHash, fileUrl } = fileInfo;
         if (!fileName.endsWith('.db')) {
             return false
         }
@@ -372,7 +372,7 @@ export class miluser extends milPluginBase {
         // 2. 获取文件内容（字符串）
         let fileContent;
         try {
-            fileContent = await getFileContent(e, fileId, busid);
+            fileContent = await getFileContent(e, fileId, busid, fileHash, fileUrl);
         } catch (err) {
             logger.error('[mil-plugin] 获取文件内容失败:', err);
             send.send_with_At(e, '读取存档文件失败，请重新发送！');
