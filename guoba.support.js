@@ -196,7 +196,7 @@ export function supportGuoba() {
                 {
                     field: 'nya_api_key',
                     label: 'Nya Profiler API Key',
-                    bottomHelpMessage: 'Re Nya Profiler API Key，在 https://renya.mhtl.im/apikey 创建。优先级低于官方 OIDC，仅当 client_id 未配置时才使用此接口',
+                    bottomHelpMessage: 'Re Nya Profiler API Key，在 https://renya.mhtlim.top/apikey 创建。优先级低于官方 OIDC，仅当 client_id 未配置时才使用此接口',
                     component: 'Input',
                     required: false,
                     componentProps: {

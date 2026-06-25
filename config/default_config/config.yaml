@@ -53,7 +53,7 @@ client_id: ""
 client_secret: ""
 
 #  Re Nya Profiler API Key（留空禁用）
-#  在 https://renya.mhtl.im/apikey 创建
+#  在 https://renya.mhtlim.top/apikey 创建
 #  优先级低于官方 OIDC（client_id），仅当 client_id 未配置时才使用此接口
 nya_api_key: ""
 
