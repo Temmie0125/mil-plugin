@@ -15,7 +15,7 @@
 import logger from './Logger.js'
 import RedisStore from './RedisStore.js'
 
-const NYA_PROFILER_BASE_URL = 'https://renya.mhtl.im/api/external'
+const NYA_PROFILER_BASE_URL = 'https://renya.mhtlim.top/api/external'
 
 /**
  * @typedef {Object} NyaTokenData
@@ -143,7 +143,7 @@ export default class NyaProfilerAuth {
         let response = await fetch(url, {
             headers: {
                 'Authorization': `Bearer ${this.apiKey}`,
-                'Referer': 'https://renya.mhtl.im/'
+                'Referer': 'https://renya.mhtlim.top/'
             }
         })
         let responseText = await response.text()
