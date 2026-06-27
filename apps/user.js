@@ -13,6 +13,7 @@ import { buildRksHistory, renderUpdateImage } from '../model/updateRender.js'
 import milPluginBase from '../components/baseClass.js'
 import Version from '../components/Version.js'
 import logger from '../components/Logger.js'
+import UserSettingsStore from '../model/userSettings.js'
 import fs from 'fs'
 import https from 'https'
 import http from 'http'
@@ -435,12 +436,15 @@ export class miluser extends milPluginBase {
             return true
         }
 
+        let userSettings = UserSettingsStore.getSettings(e.user_id)
+        let mode = userSettings.cloudMode || 'touch'
+
         let msg = e.msg
         let numMsg = msg.match(/^.*?(b|B)\s*([0-9]+)/i)?.[0]
         let nnum = numMsg ? Number(numMsg.replace(/^.*?(b|B)\s*/i, '')) : 20
         // 至少显示22个（满足2个OVERFLOW）
         if (!nnum || nnum <= 22) nnum = 22
-        
+
         let maxNum = Config.getUserCfg('config', 'B20MaxNum') || 50
         nnum = Math.min(nnum, maxNum)
 
@@ -449,8 +453,8 @@ export class miluser extends milPluginBase {
         // 获取足够数量用于 Reality 计算（多取 2 首保证精度）
         let fetchNum = Math.min(nnum + 2, maxNum + 2)
 
-        // 获取成绩并计算Reality
-        let { scores, reality } = save.getB20WithReality(fetchNum, getInfo)
+        // 获取成绩并计算Reality（按用户模式过滤）
+        let { scores, reality } = save.getB20WithReality(fetchNum, getInfo, mode)
         let player = save.getPlayerInfo()
 
         // --- 计算星星（优先使用 Nya Profiler 的预计算结果） ---
@@ -591,7 +595,7 @@ export class miluser extends milPluginBase {
         send.send_with_At(e, await picmodle.b20(data))
 
         // 云端/存档差异检测
-        let diffMsgs = save.getB20DiffText(getInfo)
+        let diffMsgs = save.getB20DiffText(getInfo, mode)
         if (diffMsgs) {
             await sendB20Diff(e, diffMsgs)
         }
@@ -611,6 +615,9 @@ export class miluser extends milPluginBase {
             return true
         }
 
+        let userSettings = UserSettingsStore.getSettings(e.user_id)
+        let mode = userSettings.cloudMode || 'touch'
+
         let msg = e.msg
         let numMsg = msg.match(/^.*?(p|ap|P|AP)\s*([0-9]+)/i)?.[0]
         let nnum = numMsg ? Number(numMsg.replace(/^.*?(p|ap|P|AP)\s*/i, '')) : 20
@@ -622,10 +629,10 @@ export class miluser extends milPluginBase {
         let bestNum = 20
         let fetchNum = Math.min(nnum + 2, maxNum + 2)
 
-        // 使用 AP 过滤的 Reality 计算
-        let { scores, reality } = save.getAP20WithReality(fetchNum, getInfo)
+        // 使用 AP 过滤的 Reality 计算（按用户模式过滤）
+        let { scores, reality } = save.getAP20WithReality(fetchNum, getInfo, mode)
         // 同时获取普通 B20 Reality 做比对
-        let { reality: normalReality } = save.getB20WithReality(20, getInfo)
+        let { reality: normalReality } = save.getB20WithReality(20, getInfo, mode)
         let player = save.getPlayerInfo()
 
         // 构建 stars / stats（与 b20 一致）
@@ -823,6 +830,9 @@ export class miluser extends milPluginBase {
             return true
         }
 
+        let userSettings = UserSettingsStore.getSettings(e.user_id)
+        let mode = userSettings.cloudMode || 'touch'
+
         let song = e.msg.replace(/[#/](.*?)(score|单曲成绩|single)(\s*)/g, '').trim()
         if (!song) {
             send.send_with_At(e, `请指定曲名哦！\n格式：/${Config.getUserCfg('config', 'cmdhead')} score <曲名>`)
@@ -836,11 +846,11 @@ export class miluser extends milPluginBase {
         }
         if (ids.length > 1) {
             this.choseMutiNick(e, ids, {}, async (e, id) => {
-                send.send_with_At(e, await renderScore(save, id))
+                send.send_with_At(e, await renderScore(save, id, mode))
             })
             return true
         }
-        send.send_with_At(e, await renderScore(save, ids[0]))
+        send.send_with_At(e, await renderScore(save, ids[0], mode))
         return true
     }
 
@@ -854,9 +864,12 @@ export class miluser extends milPluginBase {
             return true
         }
 
+        let userSettings = UserSettingsStore.getSettings(e.user_id)
+        let mode = userSettings.cloudMode || 'touch'
+
         let player = save.getPlayerInfo()
         let scores = save.scores
-        let { reality } = save.getB20WithReality(20, getInfo)
+        let { reality } = save.getB20WithReality(20, getInfo, mode)
 
         let gradeCount = {}
         let totalAcc = 0
@@ -914,14 +927,40 @@ export class miluser extends milPluginBase {
             return true
         }
 
-        let record = save.cloudRecentPlay
+        let userSettings = UserSettingsStore.getSettings(e.user_id)
+        let mode = userSettings.cloudMode || 'touch'
+
+        // 按用户模式获取最近游玩记录
+        let record = null
+        if (mode === 'touch') {
+            record = save.cloudData?.touch?.recentPlay || null
+        } else if (mode === 'keyboard') {
+            record = save.cloudData?.keyboard?.recentPlay || null
+        }
+        // merge 模式或无对应模式记录时回退
+        if (!record && mode === 'merge') {
+            let touchRecent = save.cloudData?.touch?.recentPlay
+            let keyboardRecent = save.cloudData?.keyboard?.recentPlay
+            if (touchRecent && keyboardRecent) {
+                record = (touchRecent.played_at || '') > (keyboardRecent.played_at || '')
+                    ? touchRecent : keyboardRecent
+            } else {
+                record = touchRecent || keyboardRecent || null
+            }
+        }
+        // 兼容旧格式 fallback
+        if (!record) record = save.cloudRecentPlay
+
         if (!record) {
-            send.send_with_At(e, `暂无最近游玩记录！\n请使用 /${Config.getUserCfg('config', 'cmdhead')} update 同步云端数据后再试~`)
+            let hint = mode !== 'merge'
+                ? `当前为${mode === 'touch' ? '触屏' : '键盘'}模式，无最近记录。可使用 #${Config.getUserCfg('config', 'cmdhead')} myset mode merge 切换至合并模式查看`
+                : '暂无最近游玩记录！'
+            send.send_with_At(e, `${hint}\n请使用 /${Config.getUserCfg('config', 'cmdhead')} update 同步云端数据后再试~`)
             return true
         }
 
         let player = save.getPlayerInfo()
-        let { reality } = save.getB20WithReality(20, getInfo)
+        let { reality } = save.getB20WithReality(20, getInfo, mode)
         let starLevel = computeStarLevel(save, getInfo)
 
         // 解析歌曲信息
@@ -1063,12 +1102,12 @@ export class miluser extends milPluginBase {
 /**
  * 渲染单曲成绩图片
  */
-async function renderScore(save, songKey) {
+async function renderScore(save, songKey, mode = 'merge') {
     let info = getInfo.info(songKey)
     if (!info) return `未找到${songKey}的曲目信息QAQ！`
 
     let player = save.getPlayerInfo()
-    let { scores: b20Scores, reality } = save.getB20WithReality(22, getInfo)
+    let { scores: b20Scores, reality } = save.getB20WithReality(22, getInfo, mode)
 
     let scoreData = []
     for (let level of fCompute.Level) {

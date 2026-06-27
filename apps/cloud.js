@@ -18,6 +18,7 @@ import logger from '../components/Logger.js'
 import { sendB20Diff } from '../components/common.js'
 import MilthmCloudAuth from '../components/MilthmCloudAuth.js'
 import NyaProfilerAuth from '../components/NyaProfilerAuth.js'
+import UserSettingsStore from '../model/userSettings.js'
 import SaveManager from '../model/SaveManager.js'
 import QRCode from 'qrcode'
 import { segment } from 'oicq'
@@ -500,10 +501,39 @@ export class milcloud extends milPluginBase {
                 }
             }
 
-            // 合并双端 reality（取最高，因为存档双端共用）
-            let cloudReality = rankData
-                ? Math.max(rankData.touchReality || 0, rankData.keyboardReality || 0)
-                : null
+            // 加载用户个人设置（用于模式筛选）
+            let userSettings = UserSettingsStore.getSettings(userId)
+            let userMode = userSettings.cloudMode || 'touch'
+
+            // 按平台标记 rank 数据，构建 cloudRealities 对象
+            let cloudRealities = {
+                touchReality: rankData?.touchReality || null,
+                keyboardReality: rankData?.keyboardReality || null
+            }
+
+            // 计算用户当前模式对应的云端 Reality（用于比对）
+            let cloudRealityForMode = userMode === 'touch'
+                ? (cloudRealities.touchReality || 0)
+                : userMode === 'keyboard'
+                    ? (cloudRealities.keyboardReality || 0)
+                    : Math.max(cloudRealities.touchReality || 0, cloudRealities.keyboardReality || 0)
+
+            // 合并双端 reality（取最高，兼容旧字段）
+            let cloudReality = Math.max(
+                cloudRealities.touchReality || 0,
+                cloudRealities.keyboardReality || 0
+            )
+
+            // PC 端玩家提示：用户首次使用且默认触屏模式，但只有键盘数据
+            if (UserSettingsStore.isFirstTime(userId) &&
+                (cloudRealities.touchReality || 0) === 0 &&
+                (cloudRealities.keyboardReality || 0) > 0) {
+                send.send_with_At(e,
+                    `💡 检测到你似乎主要在 PC 端游玩（键盘 Reality: ${cloudRealities.keyboardReality.toFixed(2)}，触屏 Reality: 0）\n` +
+                    `可使用 #${cmdHead} myset mode keyboard 切换至键盘模式查看成绩。`,
+                    true
+                )
+            }
 
             // 4. 用 rank/recent 数据补充本地存档，判断是否需要全量更新
             let needFullUpdate = !hasLocalData
@@ -513,22 +543,24 @@ export class milcloud extends milPluginBase {
                 // 捕获旧成绩用于 diff
                 let oldScores = getSave._captureOldScores(userId)
 
-                // 导入 rank（权威 B20，touch + keyboard 合并）先于 recent（避免低分覆盖）
-                let allRanks = [...(rankData?.touchRanks || []), ...(rankData?.keyboardRanks || [])]
+                // 导入 rank（权威 B20，按平台标记后再合并）先于 recent
+                let touchTagged = (rankData?.touchRanks || []).map(r => ({ ...r, _cloudMode: 'touch' }))
+                let keyboardTagged = (rankData?.keyboardRanks || []).map(r => ({ ...r, _cloudMode: 'keyboard' }))
+                let allRanks = [...touchTagged, ...keyboardTagged]
                 if (allRanks.length > 0) {
-                    save.importFromCloudRank(allRanks, cloudReality)
+                    save.importFromCloudRank(allRanks, cloudRealities)
                 }
                 save.importFromCloudRecent(recentRecords)
 
                 // 生成更新条目（无论是否触发全量更新都要记录 diff）
                 recentUpdateEntry = getSave._recordUpdate(userId, oldScores, save.scores, save.username || 'Unknown')
 
-                // 比对 Reality 决定是否全量
-                let localB20 = save.getB20WithReality(20, getInfo)
+                // 比对 Reality 决定是否全量（使用用户模式的云端 Reality）
+                let localB20 = save.getB20WithReality(20, getInfo, userMode)
                 let localReality = localB20.reality
 
-                if (cloudReality != null && cloudReality > 0) {
-                    let diff = cloudReality - localReality
+                if (cloudRealityForMode != null && cloudRealityForMode > 0) {
+                    let diff = cloudRealityForMode - localReality
                     if (diff >= 0.01) {
                         // 云端高于本地 → 有新在线成绩未同步，触发全量更新
                         needFullUpdate = true
@@ -615,11 +647,13 @@ export class milcloud extends milPluginBase {
                     return true
                 }
 
-                // 全量导入后再用 rank/recent 富化（双端合并）
+                // 全量导入后再用 rank/recent 富化（按平台标记）
                 save = getSave.saves[userId]
-                let allRanks2 = [...(rankData?.touchRanks || []), ...(rankData?.keyboardRanks || [])]
+                let touchTagged2 = (rankData?.touchRanks || []).map(r => ({ ...r, _cloudMode: 'touch' }))
+                let keyboardTagged2 = (rankData?.keyboardRanks || []).map(r => ({ ...r, _cloudMode: 'keyboard' }))
+                let allRanks2 = [...touchTagged2, ...keyboardTagged2]
                 if (allRanks2.length > 0) {
-                    save.importFromCloudRank(allRanks2, cloudReality)
+                    save.importFromCloudRank(allRanks2, cloudRealities)
                 }
                 if (recentRecords && recentRecords.length > 0) {
                     save.importFromCloudRecent(recentRecords)
@@ -636,21 +670,21 @@ export class milcloud extends milPluginBase {
                 let updateImg = await renderUpdateImage(userId, updateEntry)
                 send.send_with_At(e, updateImg)
 
-                // Reality 不一致提示
-                let localB20 = save.getB20WithReality(20, getInfo)
-                let finalDiff = cloudReality != null ? cloudReality - localB20.reality : 0
-                if (cloudReality != null && cloudReality > 0 && Math.abs(finalDiff) >= 0.01) {
+                // Reality 不一致提示（使用用户模式的 Reality）
+                let localB20 = save.getB20WithReality(20, getInfo, userMode)
+                let finalDiff = cloudRealityForMode != null ? cloudRealityForMode - localB20.reality : 0
+                if (cloudRealityForMode != null && cloudRealityForMode > 0 && Math.abs(finalDiff) >= 0.01) {
                     let reason = finalDiff > 0
                         ? '云端有新成绩未同步或定数变更'
                         : '本地可能含离线成绩，或 info.json 定数需更新'
                     await send.send_with_At(e,
-                        `⚠️ 云端 (${cloudReality.toFixed(4)}) 与本地 (${localB20.reality.toFixed(4)}) 不一致\n` +
+                        `⚠️ 云端 (${cloudRealityForMode.toFixed(4)}) 与本地 (${localB20.reality.toFixed(4)}) 不一致\n` +
                         `差值: ${finalDiff.toFixed(4)} | ${reason}`,
                         true
                     )
                 }
                 // 逐曲差异提示
-                let diffMsgs = save.getB20DiffText(getInfo)
+                let diffMsgs = save.getB20DiffText(getInfo, userMode)
                 if (diffMsgs) {
                     await sendB20Diff(e, diffMsgs)
                 }
@@ -659,16 +693,16 @@ export class milcloud extends milPluginBase {
                     let updateImg = await renderUpdateImage(userId, recentUpdateEntry)
                     send.send_with_At(e, updateImg)
                 }
-                let localRlt = save.getB20WithReality(20, getInfo).reality
-                let note = (cloudReality != null && localRlt - cloudReality > 0.01)
+                let localRlt = save.getB20WithReality(20, getInfo, userMode).reality
+                let note = (cloudRealityForMode != null && localRlt - cloudRealityForMode > 0.01)
                     ? ' | 本地含离线成绩，已是最全'
                     : ' | 数据一致'
                 send.send_with_At(e,
-                    `云端 Reality: ${cloudReality?.toFixed(4) || '未知'}${note}（未触发全量下载）`,
+                    `云端 Reality(${userMode === 'touch' ? '触屏' : userMode === 'keyboard' ? '键盘' : '合并'}): ${cloudRealityForMode?.toFixed(4) || '未知'}${note}（未触发全量下载）`,
                     true
                 )
                 // 逐曲差异提示（未触发全量时也检测）
-                let diffMsgs2 = save.getB20DiffText(getInfo)
+                let diffMsgs2 = save.getB20DiffText(getInfo, userMode)
                 if (diffMsgs2) {
                     await sendB20Diff(e, diffMsgs2)
                 }

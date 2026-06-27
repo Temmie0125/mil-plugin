@@ -40,10 +40,15 @@ export default class SaveManager {
         this.nyaChartProgress = null
         /** @type {number|null} Nya Profiler starCount（星级） */
         this.nyaStarCount = null
-        /** @type {number|null} 云端 Rank 接口返回的 Reality（用于与本地计算结果比对） */
+        /** @type {number|null} 云端 Rank 接口返回的 Reality（用于与本地计算结果比对，兼容旧格式） */
         this.cloudRankReality = null
-        /** @type {object|null} 云端 Recent 接口返回的最近一条游玩记录（预适配 recent 功能） */
+        /** @type {object|null} 云端 Recent 接口返回的最近一条游玩记录（预适配 recent 功能，兼容旧格式） */
         this.cloudRecentPlay = null
+        /** @type {{touch: {rankReality: number|null, recentPlay: object|null}, keyboard: {rankReality: number|null, recentPlay: object|null}}} 按平台分开的云端数据 */
+        this.cloudData = {
+            touch: { rankReality: null, recentPlay: null },
+            keyboard: { rankReality: null, recentPlay: null }
+        }
         /** @type {string|null} Milthm 云用户名（用于 Rank/Recent 接口，获取后持久化缓存） */
         this.cloudUsername = null
     }
@@ -351,6 +356,18 @@ export default class SaveManager {
     }
 
     /**
+     * 从 modifiers 数组检测云端记录的游玩模式
+     * Rank API 已通过 touch_ranks/keyboard_ranks 区分，此方法主要用于 Recent API
+     * 移动端包含 "TouchMode"，PC 端修饰符未确认，以取反判断
+     * @param {string[]} modifiers
+     * @returns {'touch'|'keyboard'}
+     */
+    _detectCloudModeFromModifiers(modifiers) {
+        if (modifiers && modifiers.includes('TouchMode')) return 'touch'
+        return 'keyboard'
+    }
+
+    /**
      * 判断是否为定数明确为 0 的特殊谱面（如教程/剧情谱面）
      * 仅在 info.json 中存在且 difficultyValue 严格为 0 时返回 true
      * @param {string} chartId
@@ -402,6 +419,7 @@ export default class SaveManager {
             nyaStarCount: this.nyaStarCount ?? null,
             cloudRankReality: this.cloudRankReality,
             cloudRecentPlay: this.cloudRecentPlay,
+            cloudData: this.cloudData,
             cloudUsername: this.cloudUsername,
             updatedAt: new Date().toISOString()
         }
@@ -425,6 +443,22 @@ export default class SaveManager {
                 this.cloudRankReality = data.cloudRankReality ?? null
                 this.cloudRecentPlay = data.cloudRecentPlay || null
                 this.cloudUsername = data.cloudUsername || null
+
+                // 加载 cloudData（新版格式），缺失时从旧字段迁移
+                if (data.cloudData) {
+                    this.cloudData = data.cloudData
+                } else {
+                    // 旧格式迁移：将 cloudRankReality 归到 touch（大多数旧数据是移动端玩家）
+                    this.cloudData = {
+                        touch: { rankReality: data.cloudRankReality ?? null, recentPlay: null },
+                        keyboard: { rankReality: null, recentPlay: null }
+                    }
+                    // 同时将已有的 cloudRecentPlay 挂到 touch 下
+                    if (data.cloudRecentPlay) {
+                        this.cloudData.touch.recentPlay = data.cloudRecentPlay
+                    }
+                }
+
                 return true
             } catch (e) {
                 return false
@@ -514,13 +548,23 @@ export default class SaveManager {
      * 再按 Reality 从高到低排序，取前 N 个谱面。
      * @param {number} n
      * @param {object} getInfo - getInfo实例
+     * @param {'touch'|'keyboard'|'merge'} mode - 云存档模式过滤，默认 'merge'
      * @returns {{ scores: object[], reality: number }}
      */
-    getB20WithReality(n = 20, getInfo) {
+    getB20WithReality(n = 20, getInfo, mode = 'merge') {
         this.ensureLoaded()
 
+        // 按模式过滤云端记录：本地存档记录（无 _cloudMode 标记）始终保留
+        let filtered = this.scores
+        if (mode === 'touch') {
+            filtered = this.scores.filter(s => !s._cloudMode || s._cloudMode === 'touch')
+        } else if (mode === 'keyboard') {
+            filtered = this.scores.filter(s => !s._cloudMode || s._cloudMode === 'keyboard')
+        }
+        // mode === 'merge'：不筛选，全部保留
+
         // 1. 为每条成绩计算 Reality
-        let scored = this.scores.map(record => {
+        let scored = filtered.map(record => {
             let singleRlt, difficulty
             if (record._nyaSingleRating != null) {
                 singleRlt = record._nyaSingleRating
@@ -576,13 +620,22 @@ export default class SaveManager {
      * 兼容旧版存档（data.db / saves.db）：accuracy >= 0.9999 即视为 AP。
      * @param {number} n - 获取数量
      * @param {object} getInfo - getInfo 实例
+     * @param {'touch'|'keyboard'|'merge'} mode - 云存档模式过滤，默认 'merge'
      * @returns {{ scores: object[], reality: number }}
      */
-    getAP20WithReality(n = 20, getInfo) {
+    getAP20WithReality(n = 20, getInfo, mode = 'merge') {
         this.ensureLoaded()
 
+        // 按模式过滤云端记录
+        let filtered = this.scores
+        if (mode === 'touch') {
+            filtered = this.scores.filter(s => !s._cloudMode || s._cloudMode === 'touch')
+        } else if (mode === 'keyboard') {
+            filtered = this.scores.filter(s => !s._cloudMode || s._cloudMode === 'keyboard')
+        }
+
         // 1. 筛选 AP 记录（acc >= 99.99% 即视为 All Perfect）
-        let apScores = this.scores.filter(s => (s.score_accuracy || 0) >= 0.9999)
+        let apScores = filtered.filter(s => (s.score_accuracy || 0) >= 0.9999)
 
         // 2. 为每条 AP 成绩计算 Reality
         let scored = apScores.map(record => {
@@ -831,22 +884,34 @@ export default class SaveManager {
      * 从云端 Rank 接口导入 B20 详细游玩表现
      * 将云端返回的详细判定数据（exact/perfect/great/good/bad/miss 计数、
      * modifiers、played_at 等）合并到现有成绩中，补充 saves.db 格式缺失的细节。
-     * 按版本组隔离：同版本组高分覆盖，跨版本组独立保存（与 importFromCloudRecent 一致）。
-     * 同时记录云端返回的 Reality 用于比对本地计算值。
-     * @param {any[]} rankEntries - rank API 返回的 rank 数组（touch + keyboard 合并）
-     * @param {number} cloudReality - 云端 total Reality
+     * 按 (chart_id, 版本组, _cloudMode) 隔离：同分组高分覆盖，跨分组独立保存。
+     * 同时按平台分开记录云端返回的 Reality 用于比对本地计算值。
+     * @param {any[]} rankEntries - rank API 返回的 rank 数组（调用方已预标 _cloudMode）
+     * @param {{touchReality: number|null, keyboardReality: number|null}} cloudRealities - 各平台云端 Reality
      * @returns {{mergedCount: number, enrichedCount: number}}
      */
-    importFromCloudRank(rankEntries, cloudReality) {
-        this.cloudRankReality = cloudReality
+    importFromCloudRank(rankEntries, cloudRealities) {
+        // 记录各平台云端 Reality
+        if (cloudRealities?.touchReality != null) {
+            this.cloudData.touch.rankReality = cloudRealities.touchReality
+        }
+        if (cloudRealities?.keyboardReality != null) {
+            this.cloudData.keyboard.rankReality = cloudRealities.keyboardReality
+        }
+        // 兼容旧字段：取双端最高
+        this.cloudRankReality = Math.max(
+            cloudRealities?.touchReality || 0,
+            cloudRealities?.keyboardReality || 0
+        )
 
-        // 构建现有 scores 的 (chart_id, versionGroup) → index 映射
+        // 构建现有 scores 的 (chart_id, versionGroup, _cloudMode) → index 映射
         let scoreIndex = {}
         for (let i = 0; i < this.scores.length; i++) {
             let cid = this.scores[i].chart_id
             let vg = this._versionGroup(this.scores[i].game_version)
-            let key = `${cid}__${vg}`
-            // 每个 (chart_id, 版本组) 保留最高分的那条索引
+            let mode = this.scores[i]._cloudMode || ''
+            let key = `${cid}__${vg}__${mode}`
+            // 每个 (chart_id, 版本组, 平台) 保留最高分的那条索引
             if (!(key in scoreIndex) || this.scores[i].score > this.scores[scoreIndex[key]].score) {
                 scoreIndex[key] = i
             }
@@ -860,10 +925,11 @@ export default class SaveManager {
             let modifiers = rankEntry.modifiers || []
             let cloudVer = rankEntry.game_version || 'v5.0'
             let cloudGroup = this._versionGroup(cloudVer)
-            let key = `${cid}__${cloudGroup}`
+            let cloudMode = rankEntry._cloudMode || ''
+            let key = `${cid}__${cloudGroup}__${cloudMode}`
 
             if (key in scoreIndex) {
-                // 同版本组：合并高分
+                // 同分组：合并高分
                 let idx = scoreIndex[key]
                 let existing = this.scores[idx]
 
@@ -916,6 +982,10 @@ export default class SaveManager {
                 if (modifiers.length > 0) {
                     existing._modifiers = modifiers
                 }
+                // 确保 _cloudMode 标记存在
+                if (cloudMode && !existing._cloudMode) {
+                    existing._cloudMode = cloudMode
+                }
 
                 // 云端返回的 Reality 值
                 if (rankEntry.reality != null) {
@@ -930,14 +1000,13 @@ export default class SaveManager {
 
                 this.scores[idx] = existing
             } else {
-                // 检查是否存在其他版本组的同谱面记录
+                // 检查是否存在其他版本组的同谱面同平台记录
                 // 跨版本组时作为独立记录添加（保留旧版记录用于 max(v2,v3) 计算）
                 // 定数为 0 的特殊谱面跨版本时直接合并，避免重复记录
                 let otherGroupKey = null
                 let otherGroup = cloudGroup === 'old' ? 'new' : 'old'
-                let altKey = `${cid}__${otherGroup}`
+                let altKey = `${cid}__${otherGroup}__${cloudMode}`
                 if (altKey in scoreIndex && this._isZeroDiffChart(cid)) {
-                    // 特殊谱面：合并到已有记录
                     otherGroupKey = altKey
                 }
 
@@ -955,10 +1024,13 @@ export default class SaveManager {
                     if ((rankEntry.score_accuracy ?? 0) > (existing.score_accuracy ?? 0)) {
                         existing.score_accuracy = rankEntry.score_accuracy
                     }
+                    if (cloudMode && !existing._cloudMode) {
+                        existing._cloudMode = cloudMode
+                    }
                     if (!existing._cloudEnriched) { existing._cloudEnriched = true; enrichedCount++ }
                     this.scores[idx] = existing
                 } else {
-                    // 新版本组记录，直接添加
+                    // 新分组记录，直接添加
                     let newRecord = {
                         chart_id: cid,
                         score: rankEntry.score,
@@ -976,6 +1048,7 @@ export default class SaveManager {
                         grade: rankEntry.grade || '',
                         _source: 'cloud_rank',
                         _modifiers: modifiers,
+                        _cloudMode: cloudMode || undefined,
                         _cloudReality: rankEntry.reality || 0,
                         _cloudEnriched: true
                     }
@@ -991,34 +1064,44 @@ export default class SaveManager {
 
     /**
      * 从云端 Recent 接口导入最近游玩记录
-     * 将所有 TouchMode 记录合并到 scores 中（用于 Reality 比对和增量更新），
-     * 同时保留第一条（最新）记录到 cloudRecentPlay 供预适配 recent 功能。
+     * 自动检测 TouchMode 判定触屏/键盘模式，按平台分开存储 recentPlay。
+     * 所有记录合并到 scores 中（用于 Reality 比对和增量更新）。
      * @param {any[]} recentRecords - recent API 返回的完整记录数组
      * @returns {{mergedCount: number, enrichedCount: number}}
      */
     importFromCloudRecent(recentRecords) {
         if (!recentRecords || recentRecords.length === 0) return { mergedCount: 0, enrichedCount: 0 }
 
-        // 构建现有 scores 的 chart_id → index 映射
+        // 为每条记录检测并标注 _cloudMode
+        for (let record of recentRecords) {
+            let modifiers = record.modifiers || []
+            record._cloudMode = this._detectCloudModeFromModifiers(modifiers)
+        }
+
+        // 构建现有 scores 的 (chart_id, _cloudMode) → index 映射
         let scoreIndex = {}
         for (let i = 0; i < this.scores.length; i++) {
             let cid = this.scores[i].chart_id
-            if (!(cid in scoreIndex) || this.scores[i].score > this.scores[scoreIndex[cid]].score) {
-                scoreIndex[cid] = i
+            let mode = this.scores[i]._cloudMode || ''
+            let key = `${cid}__${mode}`
+            if (!(key in scoreIndex) || this.scores[i].score > this.scores[scoreIndex[key]].score) {
+                scoreIndex[key] = i
             }
         }
 
         let enrichedCount = 0
         let mergedCount = 0
-        let firstTouchRecord = null
+        /** @type {{touch: object|null, keyboard: object|null}} 各平台最新记录 */
+        let latestPerMode = { touch: null, keyboard: null }
 
         for (let record of recentRecords) {
             let modifiers = record.modifiers || []
             let cid = record.chart_id
+            let cloudMode = record._cloudMode || ''
 
-            // 保留第一条 TouchMode 记录用于后续 recent 功能展示
-            if (!firstTouchRecord) {
-                firstTouchRecord = {
+            // 保留各平台第一条（最新，API 已按时间排序）记录用于 recent 功能
+            if (!latestPerMode[cloudMode]) {
+                latestPerMode[cloudMode] = {
                     chart_id: cid, score: record.score,
                     score_accuracy: record.score_accuracy || 0,
                     score_exact_count: record.score_exact_count || 0,
@@ -1033,14 +1116,16 @@ export default class SaveManager {
                     game_version: record.game_version || 'v5.0',
                     grade: record.grade || '',
                     _source: 'cloud_recent',
+                    _cloudMode: cloudMode,
                     _achievedStatus: ((record.score_bad_count || 0) === 0 && (record.score_miss_count || 0) === 0) ? [4] : [],
                     modifiers: modifiers,
                     reality: record.reality || 0
                 }
             }
 
-            if (cid in scoreIndex) {
-                let idx = scoreIndex[cid]
+            let key = `${cid}__${cloudMode}`
+            if (key in scoreIndex) {
+                let idx = scoreIndex[key]
                 let existing = this.scores[idx]
                 let cloudVer = record.game_version || 'v5.0'
                 let localGroup = this._versionGroup(existing.game_version)
@@ -1065,6 +1150,7 @@ export default class SaveManager {
                         grade: record.grade || '',
                         _source: 'cloud_recent',
                         _modifiers: modifiers,
+                        _cloudMode: cloudMode,
                         _cloudReality: record.reality || 0,
                         _cloudEnriched: true
                     })
@@ -1104,6 +1190,8 @@ export default class SaveManager {
                     if (record.played_at && !existing.played_at) existing.played_at = record.played_at
                     if (modifiers.length > 0) existing._modifiers = modifiers
                     if (record.reality != null && existing._cloudReality == null) existing._cloudReality = record.reality
+                    // 确保 _cloudMode 存在
+                    if (cloudMode && !existing._cloudMode) existing._cloudMode = cloudMode
                     if ((record.score_bad_count || 0) === 0 && (record.score_miss_count || 0) === 0) {
                         if (!existing._achievedStatus) existing._achievedStatus = []
                         if (!existing._achievedStatus.includes(4)) existing._achievedStatus.push(4)
@@ -1129,6 +1217,7 @@ export default class SaveManager {
                     grade: record.grade || '',
                     _source: 'cloud_recent',
                     _modifiers: modifiers,
+                    _cloudMode: cloudMode,
                     _cloudReality: record.reality ?? 0,
                     _cloudEnriched: true
                 })
@@ -1136,7 +1225,17 @@ export default class SaveManager {
             }
         }
 
-        if (firstTouchRecord) this.cloudRecentPlay = firstTouchRecord
+        // 将各平台最新记录存入 cloudData
+        if (latestPerMode.touch) {
+            this.cloudData.touch.recentPlay = latestPerMode.touch
+        }
+        if (latestPerMode.keyboard) {
+            this.cloudData.keyboard.recentPlay = latestPerMode.keyboard
+        }
+        // 兼容旧字段：保留第一条作为 cloudRecentPlay
+        let firstRecord = latestPerMode.touch || latestPerMode.keyboard
+        if (firstRecord) this.cloudRecentPlay = firstRecord
+
         this.saveCache()
         return { mergedCount, enrichedCount }
     }
@@ -1155,6 +1254,10 @@ export default class SaveManager {
             this.nyaStarCount = null
             this.cloudRankReality = null
             this.cloudRecentPlay = null
+            this.cloudData = {
+                touch: { rankReality: null, recentPlay: null },
+                keyboard: { rankReality: null, recentPlay: null }
+            }
             this.cloudUsername = null
             return true
         } catch (e) {
@@ -1165,12 +1268,21 @@ export default class SaveManager {
     /**
      * 构建云端 B20（基于 _cloudReality 字段）
      * @param {object} getInfo
+     * @param {'touch'|'keyboard'|'merge'} mode - 云存档模式过滤，默认 'merge'
      * @returns {{ scores: object[], reality: number }}
      */
-    getCloudB20(getInfo) {
+    getCloudB20(getInfo, mode = 'merge') {
         this.ensureLoaded()
 
-        let scored = this.scores
+        // 按模式过滤
+        let filtered = this.scores
+        if (mode === 'touch') {
+            filtered = this.scores.filter(s => !s._cloudMode || s._cloudMode === 'touch')
+        } else if (mode === 'keyboard') {
+            filtered = this.scores.filter(s => !s._cloudMode || s._cloudMode === 'keyboard')
+        }
+
+        let scored = filtered
             .filter(s => s._cloudReality != null && s._cloudReality > 0)
             .map(s => ({
                 chart_id: s.chart_id,
@@ -1205,9 +1317,9 @@ export default class SaveManager {
      * @param {object} getInfo
      * @returns {string[]|null} 差异消息数组（每条曲目一行），无差异时返回 null
      */
-    getB20DiffText(getInfo) {
-        let saveB20 = this.getB20WithReality(20, getInfo)
-        let cloudB20 = this.getCloudB20(getInfo)
+    getB20DiffText(getInfo, mode = 'merge') {
+        let saveB20 = this.getB20WithReality(20, getInfo, mode)
+        let cloudB20 = this.getCloudB20(getInfo, mode)
 
         if (cloudB20.scores.length === 0) {
             return null  // 无云端数据，无法对比

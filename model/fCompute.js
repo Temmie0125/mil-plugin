@@ -136,6 +136,12 @@ export default {
         return Object.keys(obj)
     },
 
+    /**
+    * 返回指定范围的随机整数
+    * @param {*} min 下限
+    * @param {*} max 上限
+    * @returns 随机整数
+    */
     randBetween(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min
     },

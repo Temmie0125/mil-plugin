@@ -135,5 +135,18 @@ export default {
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })
+    },
+
+    /**
+     * 渲染个人设置面板
+     * @param {object} data - 设置数据
+     * @returns {Promise<any>}
+     */
+    async myset(data) {
+        return enqueue(async () => {
+            let buff = await puppeteer.screenshot('myset/myset', data)
+            if (!buff) return '图片生成失败QAQ'
+            return segment.image(buff)
+        })
     }
 }

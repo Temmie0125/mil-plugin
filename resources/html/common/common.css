@@ -12,7 +12,6 @@
 body {
     font-family: 'Milthm', 'Noto Sans SC', sans-serif;
     width: 1200px;
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
     color: #fff;
