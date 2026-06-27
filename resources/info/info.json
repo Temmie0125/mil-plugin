@@ -2850,6 +2850,7 @@
         "titleCulture": "en",
         "latinTitle": "Brightened Demonios",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "14f8b4c3-849a-4836-8925-604b4ff5d708",
@@ -2973,6 +2974,7 @@
         "titleCulture": "en",
         "latinTitle": "Broken Conviction",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "d714a7fe-53d5-43a1-afe3-8951d8b3aad9",
@@ -3727,6 +3729,7 @@
         "titleCulture": "en",
         "latinTitle": "Contrasty Angeles",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "ac138fef-ad0b-4d0d-883c-453e6fe11d37",
@@ -4000,6 +4003,7 @@
         "titleCulture": "en",
         "latinTitle": "cybernetic blazar",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "cea79b8c-23fd-4fbd-b2a9-6f080ef15b44",
@@ -4827,6 +4831,7 @@
         "titleCulture": "en",
         "latinTitle": "Fantasia Sonata Arcadia",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "be50c0a8-f5e4-4c69-a742-3b1bba502282",
@@ -4950,6 +4955,7 @@
         "titleCulture": "en",
         "latinTitle": "Fantasia Sonata Botanical Garden",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "a0f7158f-20b5-4d0f-abc2-902fc8d60d82",
@@ -5307,6 +5313,7 @@
         "titleCulture": "en",
         "latinTitle": "Fantasia Sonata Reflection",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "4961f6d8-5519-4918-b5ef-c46ef9f523e2",
@@ -5362,6 +5369,7 @@
         "titleCulture": "en",
         "latinTitle": "Fantasia Sonata Sky Syndrome",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "dd3934f9-5a39-4086-b859-03c164db27ef",
@@ -6036,6 +6044,7 @@
         "titleCulture": "en",
         "latinTitle": "Fragment of Memories",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "a5000e56-b917-40ce-9ebb-12cc2c4a2e70",
@@ -6511,6 +6520,7 @@
         "titleCulture": "en",
         "latinTitle": "Garden",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "fe275e44-fcff-4a2d-b619-a30cd800a661",
@@ -6991,6 +7001,7 @@
         "titleCulture": "en",
         "latinTitle": "HYPER MEMORIES",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "68fbf0eb-f43a-4497-afb1-8282176aed97",
@@ -7235,6 +7246,7 @@
         "titleCulture": "en",
         "latinTitle": "INFP.mp3",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "3ebe1bbe-5d13-4175-ad91-dcf85c7bfd19",
@@ -7352,6 +7364,7 @@
         "titleCulture": "en",
         "latinTitle": "Innocent white",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "7072a099-a482-484d-84a5-945ac94807e1",
@@ -9068,6 +9081,7 @@
         "titleCulture": "en",
         "latinTitle": "Moving On",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "6d4c9a21-2ed4-4892-9b38-fd53840de04f",
@@ -9188,6 +9202,7 @@
         "titleCulture": "en",
         "latinTitle": "Myth compiler",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "78e7fa00-8388-4385-94dd-323348d154e3",
@@ -9456,6 +9471,7 @@
         "titleCulture": "en",
         "latinTitle": "Oniichan",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "a8f6451b-eeb3-4cb4-898b-4a8c4233567f",
@@ -9576,6 +9592,7 @@
         "titleCulture": "en",
         "latinTitle": "OverRain",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "c5032ab4-c03c-42c3-b132-445b94165e8d",
@@ -10478,6 +10495,7 @@
         "titleCulture": "en",
         "latinTitle": "Regnaissance",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "dd163ba4-a1fa-4fc7-ba45-91561c824cc8",
@@ -12018,6 +12036,7 @@
         "titleCulture": "en",
         "latinTitle": "Vestige of Dreams",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "7954030a-9a3b-4329-b0f8-6ef77ba5c9b1",
@@ -12381,6 +12400,7 @@
         "titleCulture": "en",
         "latinTitle": "Welcome to Milthm",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "364be32e-f685-4efb-80b5-64281c93939d",
@@ -13005,6 +13025,7 @@
         "titleCulture": "ja-JP",
         "latinTitle": "eclat",
         "Title_zh_Hans": "",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "520361a1-805b-4332-b53e-1da11a94de1b",
@@ -13125,6 +13146,7 @@
         "titleCulture": "ja-JP",
         "latinTitle": "Pieces of the Cycle",
         "Title_zh_Hans": "サイクルの欠片",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "4fa17ebf-6a8e-47c1-8d8b-bd1344ccd559",
@@ -14895,6 +14917,7 @@
         "titleCulture": "zh-Hans-CN:zh-Hant-TW:yue-Hant-mo",
         "latinTitle": "Sparkrain",
         "Title_zh_Hans": "烁雨",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "eceaaf9e-3754-4054-9c17-2d87644de96e",
@@ -16152,6 +16175,7 @@
         "titleCulture": "zh-Hans-CN:zh-Hant-TW:yue-Hant-mo",
         "latinTitle": "Castle in the Rain",
         "Title_zh_Hans": "雨之城",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "e69b4e77-ccb2-4694-ba88-7209ed097783",
@@ -16275,6 +16299,7 @@
         "titleCulture": "zh-Hans-CN:zh-Hant-TW:yue-Hant-mo:ja-JP",
         "latinTitle": "Ameonna",
         "Title_zh_Hans": "雨女",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "375f0d93-82e2-4350-9b46-98c3dd836305",
@@ -16427,6 +16452,7 @@
         "titleCulture": "zh-Hans-CN:zh-Hant-TW:yue-Hant-mo:ja-JP",
         "latinTitle": "Rei",
         "Title_zh_Hans": "靈",
+        "Original": true,
         "difficulty": {
             "Drizzle": {
                 "chartid": "285b3a4c-8a09-4a52-bb51-32263cfa6330",

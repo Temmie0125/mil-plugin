@@ -185,7 +185,8 @@ async function renderAtlas(id) {
         illustration: infoData.illustration || '',
         charts,
         version: Version.ver,
-        background: infoData.illustration || '' // 使用该曲目的曲绘作为背景
+        background: infoData.illustration || '', // 使用该曲目的曲绘作为背景
+        Original: infoData.Original || false
     }
 
     return await picmodle.atlas(data)

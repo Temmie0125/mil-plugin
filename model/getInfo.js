@@ -241,7 +241,8 @@ class GetInfo {
             songid: rawInfo.songid || '',
             illustration: this.getill(id),
             chart: {},
-            tags: rawInfo.tags || []
+            tags: rawInfo.tags || [],
+            Original: rawInfo.Original || false
         }
 
         // 处理谱面信息

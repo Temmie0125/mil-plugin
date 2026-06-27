@@ -8,13 +8,18 @@
 
 <div class="atlas-container">
     {{if illustration}}
-    <div class="ill-container">
-        <div class="ill">
-            <img src="{{illustration}}" alt="ill">
+    <div class="atlas-ill-section">
+        <div class="ill-container">
+            <div class="ill">
+                <img src="{{illustration}}" alt="ill">
+            </div>
+            <div class="ill ill-background">
+                <img src="{{illustration}}" alt="ill">
+            </div>
         </div>
-        <div class="ill ill-background">
-            <img src="{{illustration}}" alt="ill">
-        </div>
+        {{if Original}}
+        <div class="atlas-original-tag">Milthm Original</div>
+        {{/if}}
     </div>
     {{/if}}
     <div class="atlas-info">
