@@ -339,8 +339,22 @@ export class milcloud extends milPluginBase {
                         }
                     } catch { /* 撤回失败不影响主流程 */ }
                 }
+
+                // 尝试获取用户名用于确认绑定账号
+                let usernameHint = ''
+                try {
+                    let cloudUser = await auth.fetchCloudUser()
+                    if (cloudUser.username) {
+                        usernameHint = `\n已绑定账号: ${cloudUser.username}`
+                    }
+                } catch (err) {
+                    logger.warn('[mil-cloud] 获取用户名失败，跳过:', err.message)
+                }
+                if (!usernameHint){
+                    logger.warn('[mil-cloud] 无法获取用户名，请检查端点配置')
+                }
                 send.send_with_At(e,
-                    `授权成功！\n` +
+                    `授权成功！${usernameHint}\n` +
                     `现在可以使用 /${Config.getUserCfg('config', 'cmdhead')} update 更新云端存档~\n` +
                     `Token 将自动续期，无需重复授权`
                 )
@@ -689,7 +703,8 @@ export class milcloud extends milPluginBase {
                     await sendB20Diff(e, diffMsgs)
                 }
             } else {
-                if (recentUpdateEntry) {
+                let hasChanges = recentUpdateEntry && recentUpdateEntry.totalChanges > 0
+                if (hasChanges) {
                     let updateImg = await renderUpdateImage(userId, recentUpdateEntry)
                     send.send_with_At(e, updateImg)
                 }
@@ -697,8 +712,9 @@ export class milcloud extends milPluginBase {
                 let note = (cloudRealityForMode != null && localRlt - cloudRealityForMode > 0.01)
                     ? ' | 本地含离线成绩，已是最全'
                     : ' | 数据一致'
+                let noChangesHint = !hasChanges ? '\n暂无新成绩变动~' : ''
                 send.send_with_At(e,
-                    `云端 Reality(${userMode === 'touch' ? '触屏' : userMode === 'keyboard' ? '键盘' : '合并'}): ${cloudRealityForMode?.toFixed(4) || '未知'}${note}（未触发全量下载）`,
+                    `云端 Reality(${userMode === 'touch' ? '触屏' : userMode === 'keyboard' ? '键盘' : '合并'}): ${cloudRealityForMode?.toFixed(4) || '未知'}${note}（未触发全量下载）${noChangesHint}`,
                     true
                 )
                 // 逐曲差异提示（未触发全量时也检测）
