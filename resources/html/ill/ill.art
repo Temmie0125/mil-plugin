@@ -10,10 +10,14 @@
         body {
             margin: 0;
             padding: 0;
-            width: fit-content;
-            height: fit-content;
-            overflow: hidden;
             background: transparent;
+            display: block;
+        }
+        #container {
+            display: inline-block;
+            line-height: 0;
+            position: relative;
+            overflow: hidden;
         }
         .ill-wrapper {
             position: relative;
@@ -79,6 +83,7 @@
     </style>
 </head>
 <body>
+<div id="container">
 <div class="ill-wrapper">
     <img class="ill-img" src="{{illustration}}" alt="illustration">
     <div class="watermark">
@@ -89,6 +94,7 @@
             <div class="wm-ill-name">{{illustrator}}</div>
         </div>
     </div>
+</div>
 </div>
 
 <script>

@@ -18,7 +18,8 @@ const DEFAULT_DEVICE_AUTH_ENDPOINT = `${MILTHM_API_BASE}/oidc/device_authorizati
 const DEFAULT_TOKEN_ENDPOINT = `${MILTHM_API_BASE}/oidc/oauth/token`
 const DEFAULT_USERINFO_ENDPOINT = `${MILTHM_API_BASE}/oidc/userinfo`
 /** 默认 scope：读取存档 + 离线续期（获取 refresh_token） */
-const DEFAULT_SCOPE = 'milthm:save:read offline_access milthm:event:recent milthm:stats:best_performance profile'
+// const DEFAULT_SCOPE = 'milthm:save:read offline_access milthm:event:recent milthm:stats:best_performance profile'
+const DEFAULT_SCOPE = 'milthm:save:read offline_access milthm:event:recent milthm:stats:best_performance user'
 
 /**
  * @typedef {Object} OIDCConfig

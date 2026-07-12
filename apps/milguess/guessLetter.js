@@ -46,6 +46,8 @@ class LetterGameData {
         this.lastRevealedTime = 0
         /** 上次提示时间 */
         this.lastTipTime = 0
+        /** 上一条谜题板消息ID，发送新题板时用于撤回 */
+        this.puzzleMsgId = null
     }
 }
 
@@ -68,7 +70,7 @@ export default new class GuessLetter {
         const { group_id } = e
 
         if (letterGameData[group_id]) {
-            e.reply(`已经有群友发起开字母啦，不要重复发起哦！输入'/#第X个 曲名'来猜曲名或'/#出X'来揭开字母！结束请发送 /${Config.getUserCfg('config', 'cmdhead')} ans 嗷！`, true)
+            e.reply(`已经有群友发起开字母啦，不要重复发起哦！输入'/#第X个 曲名'来猜曲名或'/#出X'来揭开字母！结束请发送 /${Config.getUserCfg('config', 'cmdhead')} ans 嗷！`, true, { recallMsg: 10 })
             return true
         }
 
@@ -80,7 +82,7 @@ export default new class GuessLetter {
         const currentGame = letterGameData[group_id]
 
         if (songIdList.length < currentGame.letterNum) {
-            e.reply("曲库中曲目的数量小于开字母的条数哦！更改曲库后需要重启哦！")
+            e.reply("曲库中曲目的数量小于开字母的条数哦！更改曲库后需要重启哦！", { recallMsg: 5 })
             delete letterGameData[group_id]
             return true
         }
@@ -110,7 +112,7 @@ export default new class GuessLetter {
                 ++cnnt
                 if (cnnt >= 50) {
                     logger.error(`[mil-plugin][letter] 抽取曲目失败，请检查曲库设置`)
-                    e.reply(`抽取曲目失败，请检查曲库设置`)
+                    e.reply(`抽取曲目失败，请检查曲库设置`, { recallMsg: 10 })
                     delete letterGameData[group_id]
                     return true
                 }
@@ -131,13 +133,14 @@ export default new class GuessLetter {
         }
 
         // 输出提示
-        e.reply(`开字母开启成功！输入'/nx XXXX'猜测曲名，例如：/n1 命日；\n发送'/开X'来揭开字母（不区分大小写），如'/open A'；\n发送'/${Config.getUserCfg('config', 'cmdhead')} ans'结束并查看答案哦！`)
+        e.reply(`开字母开启成功！输入'/nx XXXX'猜测曲名，例如：/n1 命日；\n发送'/开X'来揭开字母（不区分大小写），如'/open A'；\n发送'/${Config.getUserCfg('config', 'cmdhead')} ans'结束并查看答案哦！`, true, { recallMsg: 20 })
 
         await timeout(1000)
 
         let output = '开字母进行中：\n'
         output += getPuzzle(currentGame)
-        await e.reply(output, true)
+        const sentMsg = await e.reply(output, true)
+        if (sentMsg?.message_id) currentGame.puzzleMsgId = sentMsg.message_id
 
         /** 超时自动结束 */
         while (timeCount[group_id]?.startTime == nowTime && Date.now() < timeCount[group_id].newTime) {
@@ -149,7 +152,9 @@ export default new class GuessLetter {
         }
 
         if (letterGameData[group_id]) {
-            await e.reply('呜，怎么还没有人答对啊QAQ！只能说答案了喵……')
+            const game = letterGameData[group_id]
+            await recallPuzzleMsg(e, game)
+            await e.reply('呜，怎么还没有人答对啊QAQ！只能说答案了喵……', true, { recallMsg: 10 })
             e.reply(gameover(group_id, gameList))
             return true
         }
@@ -164,7 +169,7 @@ export default new class GuessLetter {
         timeCount[group_id] && (timeCount[group_id].newTime = Date.now() + (1000 * Config.getUserCfg('config', 'LetterTimeLength')))
 
         if (!letterGameData[group_id]) {
-            e.reply(`现在还没有进行的开字母捏，赶快输入'/${Config.getUserCfg('config', 'cmdhead')} ltr'开始新的一局吧！`, true)
+            e.reply(`现在还没有进行的开字母捏，赶快输入'/${Config.getUserCfg('config', 'cmdhead')} ltr'开始新的一局吧！`, true, { recallMsg: 10 })
             return false
         }
 
@@ -175,7 +180,7 @@ export default new class GuessLetter {
         const timeleft = Math.floor((1000 * time - timetik) / 1000)
 
         if (timetik < 1000 * time) {
-            e.reply(`翻字符还有${timeleft}s冷却时间呐，先耐心等下哇QAQ`, true)
+            e.reply(`翻字符还有${timeleft}s冷却时间呐，先耐心等下哇QAQ`, true, { recallMsg: 10 })
             return true
         }
 
@@ -188,7 +193,7 @@ export default new class GuessLetter {
             let included = false
 
             if (currentGame.alphalist.includes(letter.toUpperCase())) {
-                e.reply(`字符[ ${letter} ]已经被打开过了ww，不用再重复开啦！`, true)
+                e.reply(`字符[ ${letter} ]已经被打开过了ww，不用再重复开啦！`, true, { recallMsg: 10 })
                 return true
             }
 
@@ -239,6 +244,7 @@ export default new class GuessLetter {
             output.push(opened)
 
             const isEmpty = allGuessed(currentGame)
+            await recallPuzzleMsg(e, currentGame)
             if (!isEmpty) {
                 output.push('开字母进行中：')
                 output.push(getPuzzle(currentGame))
@@ -246,7 +252,10 @@ export default new class GuessLetter {
                 output.unshift('所有字母已翻开，答案如下：')
                 output.push(gameover(group_id, gameList))
             }
-            e.reply(output.join('\n'), true)
+            const sentMsg = await e.reply(output.join('\n'), true)
+            if (sentMsg?.message_id && letterGameData[group_id]) {
+                letterGameData[group_id].puzzleMsgId = sentMsg.message_id
+            }
             return true
         }
         return false
@@ -268,7 +277,7 @@ export default new class GuessLetter {
         const timeleft = Math.floor((1000 * time - timetik) / 1000)
 
         if (timetik < 1000 * time) {
-            e.reply(`猜测还有${timeleft}s冷却时间呐，先耐心等下哇QAQ`, true)
+            e.reply(`猜测还有${timeleft}s冷却时间呐，先耐心等下哇QAQ`, true, { recallMsg: 10 })
             return true
         }
 
@@ -297,7 +306,7 @@ export default new class GuessLetter {
         const content = result[2]
 
         if (num > Config.getUserCfg('config', 'LetterNum')) {
-            e.reply(`没有第${num}个啦！看清楚再回答啊喂！`, true)
+            e.reply(`没有第${num}个啦！看清楚再回答啊喂！`, true, { recallMsg: 10 })
             return true
         }
         if (num < 0) {
@@ -309,7 +318,7 @@ export default new class GuessLetter {
         const standard_name = currentGame.ansList[num]
 
         if (!ids[0]) {
-            e.reply(`没有找到[${content}]的曲目信息呐QAQ`, true)
+            e.reply(`没有找到[${content}]的曲目信息呐QAQ`, true, { recallMsg: 10 })
             return true
         }
 
@@ -317,7 +326,7 @@ export default new class GuessLetter {
             if (standard_id === id) {
                 // 已经猜完的不能再猜
                 if (!currentGame.blurlist[num]) {
-                    e.reply(`曲目[${standard_name}]已经猜过了，要不咱们换一个吧uwu`)
+                    e.reply(`曲目[${standard_name}]已经猜过了，要不咱们换一个吧uwu`, true, { recallMsg: 10 })
                     return true
                 }
 
@@ -342,25 +351,27 @@ export default new class GuessLetter {
                 currentGame.winnerlist[num] = sender.card
                 const isEmpty = allGuessed(currentGame)
 
+                await recallPuzzleMsg(e, currentGame)
                 if (!isEmpty) {
                     output.push('开字母进行中：')
                     output.push(opened)
                     output.push(getPuzzle(currentGame))
-                    e.reply(output.join('\n'), true)
+                    const sentMsg = await e.reply(output.join('\n'), true)
+                    if (sentMsg?.message_id) currentGame.puzzleMsgId = sentMsg.message_id
                     return true
                 } else {
                     output.push('所有曲目均已被猜出，答案如下：')
                     output.push(gameover(group_id, gameList))
-                    e.reply(output.join('\n'), true)
+                    await e.reply(output.join('\n'), true)
                     return true
                 }
             }
         }
 
         if (ids[1]) {
-            e.reply(`第${num}首不是[${content}]www，要不再想想捏？如果实在不会可以悄悄发个[/${Config.getUserCfg('config', 'cmdhead')} tip]哦`, true)
+            e.reply(`第${num}首不是[${content}]www，要不再想想捏？如果实在不会可以悄悄发个[/${Config.getUserCfg('config', 'cmdhead')} tip]哦`, true, { recallMsg: 10 })
         } else {
-            e.reply(`第${num}首不是[${getInfo.info(ids[0])?.song ?? ids[0]}]www，要不再想想捏？如果实在不会可以悄悄发个[/${Config.getUserCfg('config', 'cmdhead')} tip]哦`, true)
+            e.reply(`第${num}首不是[${getInfo.info(ids[0])?.song ?? ids[0]}]www，要不再想想捏？如果实在不会可以悄悄发个[/${Config.getUserCfg('config', 'cmdhead')} tip]哦`, true, { recallMsg: 10 })
         }
         return false
     }
@@ -372,11 +383,12 @@ export default new class GuessLetter {
         const { group_id } = e
         const currentGame = letterGameData[group_id]
         if (!currentGame) {
-            e.reply(`现在还没有进行的开字母捏，赶快输入'/${Config.getUserCfg('config', 'cmdhead')} ltr'开始新的一局吧！`, true)
+            e.reply(`现在还没有进行的开字母捏，赶快输入'/${Config.getUserCfg('config', 'cmdhead')} ltr'开始新的一局吧！`, true, { recallMsg: 10 })
             return false
         }
 
-        await e.reply('好吧好吧，既然你执着要放弃，那就公布答案好啦。', true)
+        await recallPuzzleMsg(e, currentGame)
+        await e.reply('好吧好吧，既然你执着要放弃，那就公布答案好啦。', true, { recallMsg: 10 })
         e.reply(gameover(group_id, gameList))
         return true
     }
@@ -389,7 +401,7 @@ export default new class GuessLetter {
         const currentGame = letterGameData[group_id]
 
         if (!currentGame) {
-            e.reply(`现在还没有进行的开字母捏，赶快输入'/${Config.getUserCfg('config', 'cmdhead')} ltr'开始新的一局吧！`, true)
+            e.reply(`现在还没有进行的开字母捏，赶快输入'/${Config.getUserCfg('config', 'cmdhead')} ltr'开始新的一局吧！`, true, { recallMsg: 5 })
             return false
         }
 
@@ -401,7 +413,7 @@ export default new class GuessLetter {
         const timeleft = Math.floor((1000 * time - timetik) / 1000)
 
         if (timetik < 1000 * time) {
-            e.reply(`使用提示还有${timeleft}s冷却时间呐，还请先耐心等下哇QAQ`, true)
+            e.reply(`使用提示还有${timeleft}s冷却时间呐，还请先耐心等下哇QAQ`, true, { recallMsg: 5 })
             return false
         }
 
@@ -415,7 +427,7 @@ export default new class GuessLetter {
         })
 
         if (commonKeys.length === 0) {
-            e.reply('所有字母都已经翻开了，不需要提示啦！')
+            e.reply('所有字母都已经翻开了，不需要提示啦！', true, { recallMsg: 5 })
             return true
         }
 
@@ -430,7 +442,7 @@ export default new class GuessLetter {
         }
 
         if (typeof randsymbol === 'undefined' || randsymbol === '*') {
-            e.reply('提示出错了QAQ，试试 /ans 吧')
+            e.reply('提示出错了QAQ，试试 /ans 吧', { recallMsg: 5 })
             return true
         }
 
@@ -476,6 +488,7 @@ export default new class GuessLetter {
         output.push(opened)
 
         const isEmpty = allGuessed(currentGame)
+        await recallPuzzleMsg(e, currentGame)
         if (!isEmpty) {
             output.push('开字母进行中：')
             output.push(getPuzzle(currentGame))
@@ -483,13 +496,36 @@ export default new class GuessLetter {
             output.unshift('所有字母已翻开，答案如下：')
             output.push(gameover(group_id, gameList))
         }
-        e.reply(output.join('\n'), true)
+        const sentMsg = await e.reply(output.join('\n'), true)
+        if (sentMsg?.message_id && letterGameData[group_id]) {
+            letterGameData[group_id].puzzleMsgId = sentMsg.message_id
+        }
         return true
     }
 }()
 
 
 // ========== 辅助函数 ==========
+
+/**
+ * 撤回上一条谜题板消息
+ * @param {object} e - 事件对象
+ * @param {LetterGameData} gameData - 游戏数据
+ */
+async function recallPuzzleMsg(e, gameData) {
+    if (!gameData?.puzzleMsgId) return
+    const msgId = Array.isArray(gameData.puzzleMsgId)
+        ? gameData.puzzleMsgId[0]
+        : gameData.puzzleMsgId
+    gameData.puzzleMsgId = null
+    try {
+        if (e.isGroup && e.group?.recallMsg) {
+            await e.group.recallMsg(msgId)
+        } else if (e.friend?.recallMsg) {
+            await e.friend.recallMsg(msgId)
+        }
+    } catch { /* 撤回失败不影响游戏流程 */ }
+}
 
 function timeout(ms) {
     return new Promise((resolve) => {
