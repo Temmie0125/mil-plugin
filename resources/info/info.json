@@ -15276,7 +15276,10 @@
         "歌曲解锁前隐藏": "False",
         "歌曲revealType": "Astonishing",
         "歌曲隐藏作者": "False",
-        "tags": []
+        "tags": [
+            "removed"
+        ],
+        "spinfo": "本曲目已于v6.0.0版本移除"
     },
     "白色の夢で。": {
         "titleCulture": "zh-Hans-CN:zh-Hant-TW:yue-Hant-mo:ja-JP",
@@ -15991,7 +15994,8 @@
         "歌曲解锁前隐藏": "False",
         "歌曲revealType": "Astonishing",
         "歌曲隐藏作者": "False",
-        "tags": []
+        "tags": ["removed"],
+        "spinfo": "本曲目已于v6.0.0版本移除"
     },
     "选择你的宽带": {
         "titleCulture": "zh-Hans-CN:zh-Hant-TW:yue-Hant-mo",
