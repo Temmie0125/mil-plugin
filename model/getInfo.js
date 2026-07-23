@@ -78,8 +78,9 @@ class GetInfo {
                 let song = rawData[key]
                 let songId = key
 
-                this.songsid[songId] = song.latinTitle || key
-                this.songsname[song.latinTitle || key] = songId
+                let displayTitle = (typeof song.latinTitle === 'string') ? song.latinTitle : key
+                this.songsid[songId] = displayTitle
+                this.songsname[displayTitle] = songId
                 this.idList.push(songId)
 
                 // 构建 chart_id -> song_key 映射
@@ -185,8 +186,8 @@ class GetInfo {
 
         for (let key of Object.keys(this.ori_info)) {
             let info = this.ori_info[key]
-            let latin = info.latinTitle || ''
-            let artist = info.artist || ''
+            let latin = (typeof info.latinTitle === 'string') ? info.latinTitle : ''
+            let artist = (typeof info.artist === 'string') ? info.artist : ''
 
             // 精确匹配
             let exactName = `${latin} - ${artist}.png`
@@ -224,7 +225,7 @@ class GetInfo {
     info(id, createNew = false) {
         if (!this.ori_info[id]) return null
         let rawInfo = this.ori_info[id]
-        let songTitle = rawInfo.latinTitle || id
+        let songTitle = (typeof rawInfo.latinTitle === 'string') ? rawInfo.latinTitle : id
         if (rawInfo.Title_zh_Hans) {
             songTitle = rawInfo.Title_zh_Hans
         }
@@ -356,7 +357,7 @@ class GetInfo {
         // 2c. 拉丁标题匹配
         for (let id of this.idList) {
             let info = this.ori_info[id]
-            if (info && info.latinTitle) {
+            if (info && typeof info.latinTitle === 'string') {
                 let dis = fCompute.jaroWinklerDistance(query, info.latinTitle.toLowerCase())
                 if (dis >= threshold) {
                     addResult(id, dis)
@@ -367,7 +368,7 @@ class GetInfo {
         // 2d. 中文标题匹配
         for (let id of this.idList) {
             let info = this.ori_info[id]
-            if (info && info.Title_zh_Hans) {
+            if (info && typeof info.Title_zh_Hans === 'string') {
                 let dis = fCompute.jaroWinklerDistance(query, info.Title_zh_Hans.toLowerCase())
                 if (dis >= threshold) {
                     addResult(id, dis)
@@ -378,7 +379,7 @@ class GetInfo {
         // 2e. 曲师匹配
         for (let id of this.idList) {
             let info = this.ori_info[id]
-            if (info && info.artist) {
+            if (info && typeof info.artist === 'string') {
                 let dis = fCompute.jaroWinklerDistance(query, info.artist.toLowerCase())
                 if (dis >= threshold) {
                     addResult(id, dis)
