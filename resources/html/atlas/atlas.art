@@ -20,6 +20,9 @@
         {{if Original}}
         <div class="atlas-original-tag">Milthm Original</div>
         {{/if}}
+        {{if isRemoved}}
+        <div class="atlas-removed-tag">已移除</div>
+        {{/if}}
     </div>
     {{/if}}
     <div class="atlas-info">
@@ -30,6 +33,9 @@
         {{/if}}
         {{if illustrator && illustrator.length}}
         <div class="atlas-chapter">Illust: {{illustrator.join(', ')}}</div>
+        {{/if}}
+        {{if spinfo}}
+        <div class="atlas-spinfo">{{spinfo}}</div>
         {{/if}}
 
         <div class="atlas-charts">

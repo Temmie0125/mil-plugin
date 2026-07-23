@@ -4,7 +4,7 @@ import getInfo from '../model/getInfo.js'
 import fCompute from '../model/fCompute.js'
 import { calcReality, realityv2, realityv3, parseGameVersion } from '../model/reality.js'
 import { calcPushSuggestion } from '../model/pushSuggestion.js'
-import { getFileInfo, getFileContent, makeForwardMsg, sendB20Diff } from '../components/common.js'
+import { getFileInfo, getFileContent, makeForwardMsg } from '../components/common.js'
 import getSave from '../model/getSave.js'
 import SaveManager from '../model/SaveManager.js'
 import UpdateLog from '../model/UpdateLog.js'
@@ -401,7 +401,9 @@ export class miluser extends milPluginBase {
             let saveTypeHint = saveType === 'saves'
                 ? '\n'
                 : '\n提示：推荐使用 saves.db（而非 data.db）'
-            let baseMsg = `${result.msg}\n用户名：${result.username}\n数据来源：${saveTypeName}\n共导入${getSave.saves[e.user_id]?.scores?.length || 0}条成绩记录${saveTypeHint}\n现在可以查询成绩了！`
+            let saved = getSave.saves[e.user_id]
+            let onlineNote = (saved && saved.isOnline()) ? '\n⚠️ 你已绑定在线平台，B20 将使用在线数据。本次导入的存档仅用于补充详细判定和离线回退。' : ''
+            let baseMsg = `${result.msg}\n用户名：${result.username}\n数据来源：${saveTypeName}\n共导入${getSave.saves[e.user_id]?.scores?.length || 0}条成绩记录${saveTypeHint}${onlineNote}\n现在可以查询成绩了！`
 
             // 始终渲染 update 图片（首次导入展示 top 6，后续展示 diff）
             let updateImg = await renderUpdateImage(e.user_id, result.updateEntry)
@@ -431,13 +433,16 @@ export class miluser extends milPluginBase {
      */
     async b20(e) {
         let save = await getSave.getSave(e.user_id)
-        if (!save || (!save.hasSave() && save.scores.length === 0)) {
-            send.send_with_At(e, `你还没有导入存档哦！\n请先使用/${Config.getUserCfg('config', 'cmdhead')} bind绑定存档，或者发送存档文件(.db)给BOT进行导入哦`)
-            return true
-        }
 
+        // 检测在线/离线状态
+        let isOnline = save.isOnline()
         let userSettings = UserSettingsStore.getSettings(e.user_id)
         let mode = userSettings.cloudMode || 'touch'
+
+        if (!isOnline && !save.hasSave() && save.scores.length === 0) {
+            send.send_with_At(e, `你还没有导入存档哦！\n请先使用/${Config.getUserCfg('config', 'cmdhead')} bind绑定Milkloud账号，或者发送存档文件(.db)给BOT进行导入`)
+            return true
+        }
 
         let msg = e.msg
         let numMsg = msg.match(/^.*?(b|B)\s*([0-9]+)/i)?.[0]
@@ -453,8 +458,19 @@ export class miluser extends milPluginBase {
         // 获取足够数量用于 Reality 计算（多取 2 首保证精度）
         let fetchNum = Math.min(nnum + 2, maxNum + 2)
 
-        // 获取成绩并计算Reality（按用户模式过滤）
-        let { scores, reality } = save.getB20WithReality(fetchNum, getInfo, mode)
+        // 获取成绩并计算Reality（按用户模式过滤；在线模式自动走云端）
+        let { scores, reality, displayReality } = save.getB20WithReality(fetchNum, getInfo, mode)
+
+        // 在线模式：使用云端返回的 Reality 值（与游戏内一致，并向下取整）
+        if (isOnline) {
+            if (mode === 'touch') {
+                reality = save.cloudData.touch?.rankReality || reality
+            } else if (mode === 'keyboard') {
+                reality = save.cloudData.keyboard?.rankReality || reality
+            }
+        }
+        displayReality = fCompute.floorReality(reality)
+
         let player = save.getPlayerInfo()
 
         // --- 计算星星（优先使用 Nya Profiler 的预计算结果） ---
@@ -558,7 +574,7 @@ export class miluser extends milPluginBase {
                 bpm,
                 score: displayScore,
                 accuracy: displayAcc,
-                reality: singleRlt,
+                reality: fCompute.floorReality(singleRlt),
                 grade: gradeInfo.grade,
                 gradeIcon: gradeInfo.iconName,
                 exact: record.score_exact_count || 0,
@@ -576,10 +592,15 @@ export class miluser extends milPluginBase {
         // 随机背景曲绘
         let bgIll = getInfo.getill(getInfo.all_id[fCompute.randBetween(0, getInfo.all_id.length - 1)] || '')
 
+        let modeLabel = mode === 'touch' ? '触屏' : mode === 'keyboard' ? '键盘' : '合并'
+        let sourceLabel = isOnline
+            ? (save.onlineBackend === 'milkloud' ? 'Milkloud 在线' : 'Nya Profiler 在线')
+            : '本地存档'
+
         let data = {
             avatar: randomAvatar(),
             username: player.username,
-            reality,
+            reality: reality,
             realityIcon: allV3 ? 'reality_v3' : 'reality',
             starLevel,
             scores: scoreData.slice(0, nnum),
@@ -587,18 +608,14 @@ export class miluser extends milPluginBase {
             stats,
             updateTime: fCompute.formatDate(new Date().toISOString()),
             background: bgIll,
-            version: Version.ver
+            version: Version.ver,
+            modeLabel,
+            sourceLabel
         }
         if (!Config.getUserCfg('config', 'isGuild')) {
             e.reply("正在生成图片，请稍等一下哦！\n//·/w\\·\\\\", false, { recallMsg: 5 })
         }
         send.send_with_At(e, await picmodle.b20(data))
-
-        // 云端/存档差异检测
-        let diffMsgs = save.getB20DiffText(getInfo, mode)
-        if (diffMsgs) {
-            await sendB20Diff(e, diffMsgs)
-        }
 
         return true
     }
@@ -610,7 +627,8 @@ export class miluser extends milPluginBase {
      */
     async p20(e) {
         let save = await getSave.getSave(e.user_id)
-        if (!save || (!save.hasSave() && save.scores.length === 0)) {
+        let isOnline = save.isOnline()
+        if (!isOnline && !save.hasSave() && save.scores.length === 0) {
             send.send_with_At(e, `你还没有导入存档哦！\n请先使用/${Config.getUserCfg('config', 'cmdhead')} bind绑定存档，或者发送存档文件(.db)给BOT进行导入哦`)
             return true
         }
@@ -720,7 +738,7 @@ export class miluser extends milPluginBase {
                 bpm,
                 score: displayScore,
                 accuracy: displayAcc,
-                reality: singleRlt,
+                reality: fCompute.floorReality(singleRlt),
                 grade: gradeInfo.grade,
                 gradeIcon: gradeInfo.iconName,
                 exact: record.score_exact_count || 0,
@@ -825,7 +843,8 @@ export class miluser extends milPluginBase {
      */
     async singlescore(e) {
         let save = await getSave.getSave(e.user_id)
-        if (!save || (!save.hasSave() && save.scores.length === 0)) {
+        let isOnline = save.isOnline()
+        if (!isOnline && !save.hasSave() && save.scores.length === 0) {
             send.send_with_At(e, `你还没有导入存档哦！\n请先使用/${Config.getUserCfg('config', 'cmdhead')} bind绑定存档，或发送存档文件(saves.db)给BOT，进行导入嗷`)
             return true
         }
@@ -859,7 +878,9 @@ export class miluser extends milPluginBase {
      */
     async data(e) {
         let save = await getSave.getSave(e.user_id)
-        if (!save || (!save.hasSave() && save.scores.length === 0)) {
+
+        let isOnline = save.isOnline()
+        if (!isOnline && !save.hasSave() && save.scores.length === 0) {
             send.send_with_At(e, `你还没有导入存档哦！请先使用/${Config.getUserCfg('config', 'cmdhead')} bind绑定存档，或发送存档文件进行导入哦`)
             return true
         }
@@ -869,7 +890,7 @@ export class miluser extends milPluginBase {
 
         let player = save.getPlayerInfo()
         let scores = save.scores
-        let { reality } = save.getB20WithReality(20, getInfo, mode)
+        let { reality, displayReality } = save.getB20WithReality(20, getInfo, mode)
 
         let gradeCount = {}
         let totalAcc = 0
@@ -896,14 +917,16 @@ export class miluser extends milPluginBase {
 
         let avgAcc = scores.length > 0 ? (totalAcc / scores.length * 100).toFixed(2) : 0
 
-        let saveTypeNote = player.saveType === 'saves'
-            ? '\n数据来源：saves.db'
-            : player.saveType === 'data'
-                ? '\n数据来源：data.db'
-                : ''
+        let saveTypeNote = isOnline
+            ? `\n数据来源：${save.onlineBackend === 'milkloud' ? 'Milkloud 在线' : 'Nya Profiler 在线'}`
+            : player.saveType === 'saves'
+                ? '\n数据来源：saves.db'
+                : player.saveType === 'data'
+                    ? '\n数据来源：data.db'
+                    : ''
 
         let msg = `====== ${player.username} 的数据统计 ======\n`
-        msg += `Reality: ${reality.toFixed(2)}\n`
+        msg += `Reality: ${displayReality.toFixed(2)}\n`
         msg += `总成绩数：${player.totalScores}\n`
         msg += `平均ACC：${avgAcc}%\n`
         msg += `\n------ 评级分布 ------${saveTypeNote}\n`
@@ -922,7 +945,8 @@ export class miluser extends milPluginBase {
      */
     async recent(e) {
         let save = await getSave.getSave(e.user_id)
-        if (!save || (!save.hasSave() && save.scores.length === 0)) {
+        let isOnline = save.isOnline()
+        if (!isOnline && !save.hasSave() && save.scores.length === 0) {
             send.send_with_At(e, `你还没有导入存档哦！\n请先使用 /${Config.getUserCfg('config', 'cmdhead')} update 更新数据`)
             return true
         }
@@ -1154,9 +1178,10 @@ async function renderScore(save, songKey, mode = 'merge') {
                 level,
                 levelAbbr: fCompute.LevelAbbr[level] || level,
                 difficulty: chart.difficulty,
+                isMultiFinger: chart.isMultiFinger || false,
                 score: record.score,
                 accuracy: record.score_accuracy || 0,
-                reality: singleRlt,
+                reality: fCompute.floorReality(singleRlt),
                 combo: chart.combo,
                 grade: gradeInfo.grade,
                 gradeIcon: gradeInfo.iconName,
@@ -1205,6 +1230,8 @@ async function renderScore(save, songKey, mode = 'merge') {
         chapter_zh: info.chapter_zh || '',
         illustration: info.illustration || '',
         scoreData,
+        spinfo: info.spinfo || '',
+        isRemoved: Array.isArray(info.tags) && info.tags.includes('removed'),
         version: Version.ver,
         background: info.illustration || ''
     })

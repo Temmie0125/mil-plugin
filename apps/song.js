@@ -184,6 +184,8 @@ async function renderAtlas(id) {
         chapter_zh: infoData.chapter_zh || infoData.chapter || '',
         illustration: infoData.illustration || '',
         charts,
+        spinfo: infoData.spinfo || '',
+        isRemoved: Array.isArray(infoData.tags) && infoData.tags.includes('removed'),
         version: Version.ver,
         background: infoData.illustration || '', // 使用该曲目的曲绘作为背景
         Original: infoData.Original || false

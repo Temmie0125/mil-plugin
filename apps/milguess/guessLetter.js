@@ -15,7 +15,7 @@ import fs from 'fs'
 /**
  * @type {string[]}
  */
-let songIdList = getInfo.idList || []
+let songIdList = (getInfo.idList || []).filter(id => !getInfo.isRemovedSong(id))
 
 /**
  * 存储每首歌曲被抽取的权重

@@ -23,6 +23,9 @@
         <div class="rlt-box">
             <p>{{reality.toFixed(4)}}</p>
         </div>
+        <div class="source-box">
+            <p>{{sourceLabel}} · {{modeLabel}}</p>
+        </div>
         <div class="date">
             <p>{{updateTime}}</p>
         </div>

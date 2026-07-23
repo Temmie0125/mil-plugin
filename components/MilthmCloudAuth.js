@@ -18,8 +18,7 @@ const DEFAULT_DEVICE_AUTH_ENDPOINT = `${MILTHM_API_BASE}/oidc/device_authorizati
 const DEFAULT_TOKEN_ENDPOINT = `${MILTHM_API_BASE}/oidc/oauth/token`
 const DEFAULT_USERINFO_ENDPOINT = `${MILTHM_API_BASE}/oidc/userinfo`
 /** 默认 scope：读取存档 + 离线续期（获取 refresh_token） */
-// const DEFAULT_SCOPE = 'milthm:save:read offline_access milthm:event:recent milthm:stats:best_performance profile'
-const DEFAULT_SCOPE = 'milthm:save:read offline_access milthm:event:recent milthm:stats:best_performance user'
+const DEFAULT_SCOPE = 'openid milthm:save:read offline_access milthm:event:recent milthm:stats:best_performance profile'
 
 /**
  * @typedef {Object} OIDCConfig
@@ -52,6 +51,8 @@ export default class MilthmCloudAuth {
         this._token = null
         /** @type {OIDCConfig|null} */
         this._oidcConfig = null
+        /** @type {string|null} 直接令牌（用户自行创建的 API Token，包含完整 Authorization 头如 "Basic xxx"） */
+        this.directToken = null
     }
 
     // ==================== Token 持久化（Redis + 文件迁移兼容） ====================
@@ -62,7 +63,18 @@ export default class MilthmCloudAuth {
      */
     async loadToken() {
         try {
-            this._token = await RedisStore.getOidcToken(this.userId)
+            let data = await RedisStore.getOidcToken(this.userId)
+            if (data) {
+                // 提取直接令牌（独立字段，不影响 OIDC token 结构）
+                if (data._directToken) {
+                    this.directToken = data._directToken
+                    delete data._directToken
+                }
+                // 仅当包含 OIDC 字段时才视为有效 OIDC token
+                if (data.access_token) {
+                    this._token = data
+                }
+            }
             return this._token
         } catch (e) {
             logger.error(`[mil-cloud] 加载 token 失败:`, e.message)
@@ -76,7 +88,9 @@ export default class MilthmCloudAuth {
      */
     async saveToken() {
         try {
-            await RedisStore.setOidcToken(this.userId, this._token)
+            let data = this._token ? { ...this._token } : {}
+            if (this.directToken) data._directToken = this.directToken
+            await RedisStore.setOidcToken(this.userId, Object.keys(data).length > 0 ? data : null)
         } catch (e) {
             logger.error(`[mil-cloud] 保存 token 失败:`, e.message)
         }
@@ -88,6 +102,7 @@ export default class MilthmCloudAuth {
      */
     async clearTokens() {
         this._token = null
+        this.directToken = null
         try {
             await RedisStore.delOidcToken(this.userId)
         } catch (e) {
@@ -100,9 +115,55 @@ export default class MilthmCloudAuth {
      * @returns {Promise<boolean>}
      */
     async isBound() {
-        if (this._token) return true
+        if (this._token || this.directToken) return true
         await this.loadToken()
-        return !!this._token
+        return !!(this._token || this.directToken)
+    }
+
+    /**
+     * 是否使用直接令牌模式（用户自行创建的 API Token）
+     * @returns {boolean}
+     */
+    isDirectTokenMode() {
+        return !!this.directToken
+    }
+
+    /**
+     * 使用直接令牌绑定（用户自行创建的 API Token）
+     * 输入的 token 可能是完整 Authorization 头（如 "Basic xxx"）或仅凭证部分
+     * @param {string} tokenHeader - Authorization 头值或仅凭证
+     */
+    async bindWithToken(tokenHeader) {
+        let token = tokenHeader.trim()
+        // 去掉可能存在的 "Authorization:" 外层前缀（用户可能一键复制完整头）
+        token = token.replace(/^authorization:\s*/i, '')
+        // 标准化：统一为 "Basic xxx" 或 "Bearer xxx" 格式
+        if (token.toLowerCase().startsWith('basic ')) {
+            // 已经是完整格式，直接使用
+        } else if (token.toLowerCase().startsWith('bearer ')) {
+            // Bearer token，直接使用
+        } else {
+            // 仅凭证部分，补全为 Basic 格式
+            token = `Basic ${token}`
+        }
+        // 清除旧的 OIDC token，保留新的 directToken
+        this._token = null
+        await RedisStore.delOidcToken(this.userId)
+        // 设置并保存直接令牌
+        this.directToken = token
+        await this.saveToken()
+    }
+
+    /**
+     * 获取 Milthm API 请求的 Authorization 头值
+     * 直接令牌模式返回完整头（如 "Basic xxx"），OIDC 模式返回 "Bearer xxx"
+     * @returns {Promise<string|null>}
+     */
+    async _getApiAuthHeader() {
+        if (this.directToken) return this.directToken
+        let token = await this.getAccessToken()
+        if (!token) return null
+        return `Bearer ${token}`
     }
 
     /**
@@ -110,6 +171,8 @@ export default class MilthmCloudAuth {
      * @returns {Promise<string[]>} 缺少的 scope，空数组表示完整
      */
     async getMissingScopes() {
+        // 直接令牌模式：无法检测 scope，跳过检查
+        if (this.directToken) return []
         if (!this._token) await this.loadToken()
         let stored = new Set((this._token?.scope || '').split(' ').filter(Boolean))
         let required = new Set(DEFAULT_SCOPE.split(' ').filter(Boolean))
@@ -244,6 +307,8 @@ export default class MilthmCloudAuth {
 
         if (resp.ok && data.access_token) {
             // 成功获取 token
+            // logger.debug('[mil-cloud] Token 获取成功，id_token:', data.id_token);
+            // logger.debug('[mil-cloud] Token 获取成功，access_token:', data.access_token);
             logger.debug('[mil-cloud] Token 获取成功，服务端返回字段:', {
                 keys: Object.keys(data),
                 token_type: data.token_type,
@@ -353,7 +418,9 @@ export default class MilthmCloudAuth {
      * @returns {Promise<boolean>}
      */
     async ensureValidToken() {
-        if (!this.isBound()) return false
+        // 直接令牌模式：长生命周期 API Token，无需过期检查
+        if (this.directToken) return true
+        if (!(await this.isBound())) return false
 
         // access_token 未过期
         if (this._token.expires_at > Date.now() + 60000) {
@@ -376,6 +443,8 @@ export default class MilthmCloudAuth {
      * @returns {Promise<string|null>}
      */
     async getAccessToken() {
+        // 直接令牌模式：无需 ensureValidToken，直接返回
+        if (this.directToken) return this.directToken
         if (!(await this.ensureValidToken())) return null
         return this._token.access_token
     }
@@ -387,11 +456,11 @@ export default class MilthmCloudAuth {
      * @returns {Promise<{meta: any, updated_at: string}>}
      */
     async fetchSaveInfo() {
-        let token = await this.getAccessToken()
-        if (!token) throw new Error('[invalid_grant] 未授权或 token 已失效，请重新 /mil bind 授权')
+        let authHeader = await this._getApiAuthHeader()
+        if (!authHeader) throw new Error('[invalid_grant] 未授权或 token 已失效，请重新 /mil bind 授权')
 
         let resp = await fetch(`${MILTHM_API_BASE}/v1/game/save/info`, {
-            headers: { Authorization: `Bearer ${token}`, 'User-Agent': USER_AGENT }
+            headers: { Authorization: authHeader, 'User-Agent': USER_AGENT }
         })
 
         let body = await resp.text()
@@ -416,11 +485,11 @@ export default class MilthmCloudAuth {
      * @returns {Promise<{fileUrl: string, rawData: any}>}
      */
     async fetchSaveData() {
-        let token = await this.getAccessToken()
-        if (!token) throw new Error('[invalid_grant] 未授权或 token 已失效，请重新 /mil bind 授权')
+        let authHeader = await this._getApiAuthHeader()
+        if (!authHeader) throw new Error('[invalid_grant] 未授权或 token 已失效，请重新 /mil bind 授权')
 
         let resp = await fetch(`${MILTHM_API_BASE}/v1/game/save`, {
-            headers: { Authorization: `Bearer ${token}`, 'User-Agent': USER_AGENT }
+            headers: { Authorization: authHeader, 'User-Agent': USER_AGENT }
         })
 
         let body = await resp.text()
@@ -452,23 +521,13 @@ export default class MilthmCloudAuth {
      * @returns {Promise<{username: string, nickname: string, uid: string}>}
      */
     async fetchCloudUser() {
-        // 1) 优先：token 中已缓存的用户名
-        if (!this._token) await this.loadToken()
-        if (this._token && this._token.cloud_username) {
-            logger.debug('[mil-cloud] 使用 token 缓存的用户名:', this._token.cloud_username)
-            return {
-                username: this._token.cloud_username,
-                nickname: '',
-                uid: ''
-            }
-        }
-
-        // 2) 调用 /v1/user 接口
-        let token = await this.getAccessToken()
-        if (!token) throw new Error('[invalid_grant] 未授权或 token 已失效')
+        // 始终调用 /v1/user 获取正确的 username
+        // （令牌中缓存的 cloud_username 可能来自 OIDC id_token 的 sub，即 uid 而非 username）
+        let authHeader = await this._getApiAuthHeader()
+        if (!authHeader) throw new Error('[invalid_grant] 未授权或 token 已失效')
 
         let resp = await fetch(`${MILTHM_API_BASE}/v1/user?`, {
-            headers: { Authorization: `Bearer ${token}`, 'User-Agent': USER_AGENT }
+            headers: { Authorization: authHeader, 'User-Agent': USER_AGENT }
         })
 
         let body = await resp.text()
@@ -508,11 +567,11 @@ export default class MilthmCloudAuth {
      * @returns {Promise<{touchReality: number, keyboardReality: number, touchRanks: any[], keyboardRanks: any[]}>}
      */
     async fetchRankData(username) {
-        let token = await this.getAccessToken()
-        if (!token) throw new Error('[invalid_grant] 未授权或 token 已失效，请重新 /mil bind 授权')
+        let authHeader = await this._getApiAuthHeader()
+        if (!authHeader) throw new Error('[invalid_grant] 未授权或 token 已失效，请重新 /mil bind 授权')
 
         let resp = await fetch(`${MILTHM_API_BASE}/v1/user/${encodeURIComponent(username)}/rank?`, {
-            headers: { Authorization: `Bearer ${token}`, 'User-Agent': USER_AGENT }
+            headers: { Authorization: authHeader, 'User-Agent': USER_AGENT }
         })
 
         let body = await resp.text()
@@ -549,11 +608,11 @@ export default class MilthmCloudAuth {
      * @returns {Promise<any[]>}
      */
     async fetchRecentData(username) {
-        let token = await this.getAccessToken()
-        if (!token) throw new Error('[invalid_grant] 未授权或 token 已失效，请重新 /mil bind 授权')
+        let authHeader = await this._getApiAuthHeader()
+        if (!authHeader) throw new Error('[invalid_grant] 未授权或 token 已失效，请重新 /mil bind 授权')
 
         let resp = await fetch(`${MILTHM_API_BASE}/v1/user/${encodeURIComponent(username)}/recent?`, {
-            headers: { Authorization: `Bearer ${token}`, 'User-Agent': USER_AGENT }
+            headers: { Authorization: authHeader, 'User-Agent': USER_AGENT }
         })
 
         let body = await resp.text()

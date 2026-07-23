@@ -15,7 +15,7 @@ import fCompute from '../model/fCompute.js'
 import { buildRksHistory, renderUpdateImage } from '../model/updateRender.js'
 import milPluginBase from '../components/baseClass.js'
 import logger from '../components/Logger.js'
-import { sendB20Diff } from '../components/common.js'
+
 import MilthmCloudAuth from '../components/MilthmCloudAuth.js'
 import NyaProfilerAuth from '../components/NyaProfilerAuth.js'
 import UserSettingsStore from '../model/userSettings.js'
@@ -41,8 +41,12 @@ export class milcloud extends milPluginBase {
             priority: 1000,
             rule: [
                 {
-                    reg: `^[#/](${Config.getUserCfg('config', 'cmdhead')})(\\s*)(bind|绑定)(\\s*)$`,
+                    reg: `^[#/](${Config.getUserCfg('config', 'cmdhead')})(\\s*)(bind|绑定)(\\s*)(.*)$`,
                     fnc: 'bind'
+                },
+                {
+                    reg: `^[#/](${Config.getUserCfg('config', 'cmdhead')})(\\s*)(tk|token)(\\s+)(help)(\\s*)$`,
+                    fnc: 'tkHelp'
                 },
                 {
                     reg: `^[#/](${Config.getUserCfg('config', 'cmdhead')})(\\s*)(update|更新存档|云存档)(\\s*)$`,
@@ -57,24 +61,156 @@ export class milcloud extends milPluginBase {
     }
 
     /**
-     * 授权云存档 - Device Auth 流程（token 自动续期）
-     * 或授权 Nya Profiler（当未配置 OIDC 时）
+     * 授权云存档
+     * - /mil bind OIDC  → OIDC Device Auth 流程
+     * - /mil bind <token> → 直接绑定 API 令牌
+     * - /mil bind         → 无参提示
      */
     async bind(e) {
         let userId = e.user_id
+        let cmdHead = Config.getUserCfg('config', 'cmdhead')
 
-        // 检查配置优先级
+        // 解析参数
+        let arg = e.msg.replace(new RegExp(`^[#/]${cmdHead}\\s*(bind|绑定)\\s*`, 'i'), '').trim()
+
+        if (arg && arg.toUpperCase() === 'OIDC') {
+            // OIDC 流程
+            let clientId = this._getClientId()
+            if (!clientId) {
+                send.send_with_At(e, '尚未配置 OIDC client_id！\n请联系 Bot 主人在 Guoba 面板中填写，或使用 `/mil bind <token>` 直接绑定 API 令牌')
+                return true
+            }
+            return await this._bindOIDC(e)
+        }
+
+        if (arg && arg.length > 20) {
+            // 直接令牌绑定
+            return await this._bindWithToken(e, arg)
+        }
+
+        // 无参数：检查是否已绑定
         let clientId = this._getClientId()
         let nyaApiKey = this._getNyaApiKey()
 
+        // 检查 OIDC 绑定状态
         if (clientId) {
-            return await this._bindOIDC(e)
-        } else if (nyaApiKey) {
-            return await this._bindNya(e)
-        } else {
-            send.send_with_At(e, '尚未配置云存档接口！\n请联系 Bot 主人在 Guoba 面板中填写：\n• Milthm 云存档的 client_id 和 client_secret（推荐）\n• 或 Re Nya Profiler 的 API Key')
-            return true
+            let auth = new MilthmCloudAuth(userId, clientId, this._getClientSecret())
+            if (await auth.isBound()) {
+                let isValid = await auth.ensureValidToken()
+                if (isValid) {
+                    send.send_with_At(e, `你已通过 OIDC 授权 Milthm 云存档~\n如需更换账号，请先使用 /${cmdHead} unbind 解除授权\n或使用 /${cmdHead} bind <token> 直接绑定 API 令牌`)
+                    return true
+                }
+            }
         }
+
+        // 检查直接令牌绑定状态
+        if (!clientId) {
+            let auth = new MilthmCloudAuth(userId, '', '')
+            await auth.loadToken()
+            if (auth.isDirectTokenMode()) {
+                send.send_with_At(e, `你已通过 API 令牌绑定 Milthm 云存档~\n如需更换，请先使用 /${cmdHead} unbind 解除授权`)
+                return true
+            }
+        }
+
+        // 检查 Nya Profiler
+        if (nyaApiKey) {
+            let nyaAuth = new NyaProfilerAuth(userId, nyaApiKey)
+            if (await nyaAuth.isBound()) {
+                send.send_with_At(e, `你已授权 Re Nya Profiler 查分器~\n如需更换账号，请先使用 /${cmdHead} unbind 解除授权`)
+                return true
+            }
+        }
+
+        // 未绑定，显示帮助
+        let hasClientId = !!clientId
+        let hint = hasClientId
+            ? `\n  /${cmdHead} bind OIDC      通过OIDC流程授权`
+            : ''
+        send.send_with_At(e,
+            `请提供token或者使用OIDC进行授权哦！\n` +
+            `命令格式：\n` +
+            `  /${cmdHead} bind <token>  使用API令牌直接绑定${hint}\n\n` +
+            `使用/${cmdHead} tk help 获取token帮助`
+        )
+        return true
+    }
+
+    /**
+     * 直接令牌绑定流程（用户自行创建的 API Token）
+     * @param e - 事件对象
+     * @param {string} token - Authorization 头值（如 "Basic xxx"）
+     */
+    async _bindWithToken(e, token) {
+        let userId = e.user_id
+        let cmdHead = Config.getUserCfg('config', 'cmdhead')
+
+        let auth = new MilthmCloudAuth(userId, '', '')
+        await auth.bindWithToken(token)
+
+        // 验证令牌有效性
+        try {
+            let cloudUser = await auth.fetchCloudUser()
+            if (!cloudUser.username) {
+                throw new Error('无法获取用户名，请检查令牌权限是否包含 profile')
+            }
+
+            // 设置在线模式
+            let save = getSave.saves[userId]
+            if (!save) {
+                save = new SaveManager(userId)
+                getSave.saves[userId] = save
+            }
+            save.setOnlineMode('milkloud')
+            save.saveCache()
+
+            send.send_with_At(e,
+                `令牌绑定成功！\n` +
+                `已绑定账号: ${cloudUser.username}\n` +
+                `现在可以使用 /${cmdHead} update 更新云端存档~`
+            )
+        } catch (err) {
+            await auth.clearTokens()
+            if (err.message.includes('[invalid_grant]')) {
+                send.send_with_At(e, `令牌验证失败：令牌无效或已过期，请检查后重试\n使用/${cmdHead} tk help 获取帮助`)
+            } else {
+                send.send_with_At(e, `令牌验证失败：${err.message}\n请检查令牌是否正确，使用/${cmdHead} tk help 获取帮助`)
+            }
+        }
+
+        return true
+    }
+
+    /**
+     * API 令牌获取帮助
+     */
+    async tkHelp(e) {
+        let cmdHead = Config.getUserCfg('config', 'cmdhead')
+        let helpImg = `${Plugin_Path}/resources/doc/tkhelp.png`
+        let msg = [
+            `=== Milkloud API 令牌获取指南 ===`,
+            ``,
+            `1. 前往 Milkloud 官网 (milkloud.milthm.cn)`,
+            `2. 登录后进入「令牌管理」页面`,
+            `3. 创建新令牌，勾选以下权限：`,
+            `   • openid`,
+            `   • profile`,
+            `   • milthm:save:read`,
+            `   • milthm:event:recent`,
+            `   • milthm:stats:best_performance`,
+            `4. 复制生成的完整 Authorization 头（形如 Basic xxx）`,
+            `5. 使用 /${cmdHead} bind <令牌> 绑定`,
+            ``,
+            `提示：令牌不依赖 Bot 端配置，可直接使用`,
+        ].join('\n')
+
+        if (fs.existsSync(helpImg)) {
+            await send.send_with_At(e, [msg, segment.image(`file:///${helpImg.replace(/\\/g, '/')}`)])
+        } else {
+            await send.send_with_At(e, msg)
+        }
+        return true
     }
 
     /**
@@ -262,6 +398,15 @@ export class milcloud extends milPluginBase {
         try {
             let username = await nyaAuth.pollAuthLoop(authInfo.uuid, nyaTimeoutSec, 3)
 
+            // 设置在线模式
+            let saveNya = getSave.saves[e.user_id]
+            if (!saveNya) {
+                saveNya = new SaveManager(e.user_id)
+                getSave.saves[e.user_id] = saveNya
+            }
+            saveNya.setOnlineMode('nya_profiler')
+            saveNya.saveCache()
+
             // 撤回授权链接消息
             if (authMsg?.message_id) {
                 let msgId = Array.isArray(authMsg.message_id)
@@ -340,6 +485,15 @@ export class milcloud extends milPluginBase {
                     } catch { /* 撤回失败不影响主流程 */ }
                 }
 
+                // 设置在线模式
+                let saveBind = getSave.saves[e.user_id]
+                if (!saveBind) {
+                    saveBind = new SaveManager(e.user_id)
+                    getSave.saves[e.user_id] = saveBind
+                }
+                saveBind.setOnlineMode('milkloud')
+                saveBind.saveCache()
+
                 // 尝试获取用户名用于确认绑定账号
                 let usernameHint = ''
                 try {
@@ -412,7 +566,13 @@ export class milcloud extends milPluginBase {
         } else if (nyaApiKey) {
             return await this._updateNya(e)
         } else {
-            send.send_with_At(e, '尚未配置云存档接口！\n请联系 Bot 主人在 Guoba 面板中填写相关配置')
+            // 检查直接令牌绑定
+            let auth = new MilthmCloudAuth(e.user_id, '', '')
+            await auth.loadToken()
+            if (auth.isDirectTokenMode()) {
+                return await this._updateOIDC(e)
+            }
+            send.send_with_At(e, '尚未配置云存档接口！\n请联系 Bot 主人在 Guoba 面板中填写相关配置，或使用 `/mil bind <token>` 绑定 API 令牌')
             return true
         }
     }
@@ -564,17 +724,21 @@ export class milcloud extends milPluginBase {
                 if (allRanks.length > 0) {
                     save.importFromCloudRank(allRanks, cloudRealities)
                 }
+                // 存储纯云端 Best 数据（用于在线模式 B20 计算）
+                save.cloudBestData = allRanks
                 save.importFromCloudRecent(recentRecords)
 
                 // 生成更新条目（无论是否触发全量更新都要记录 diff）
                 recentUpdateEntry = getSave._recordUpdate(userId, oldScores, save.scores, save.username || 'Unknown')
 
-                // 比对 Reality 决定是否全量（使用用户模式的云端 Reality）
+                // 比对 Reality 决定是否全量（使用用户模式的云端 Reality，向下取整后比较）
                 let localB20 = save.getB20WithReality(20, getInfo, userMode)
                 let localReality = localB20.reality
 
                 if (cloudRealityForMode != null && cloudRealityForMode > 0) {
-                    let diff = cloudRealityForMode - localReality
+                    let cloudFloored = fCompute.floorReality(cloudRealityForMode)
+                    let localFloored = fCompute.floorReality(localReality)
+                    let diff = cloudFloored - localFloored
                     if (diff >= 0.01) {
                         // 云端高于本地 → 有新在线成绩未同步，触发全量更新
                         needFullUpdate = true
@@ -662,13 +826,18 @@ export class milcloud extends milPluginBase {
                 }
 
                 // 全量导入后再用 rank/recent 富化（按平台标记）
+                // 注意：importSave 内部创建了新的 SaveManager，需恢复在线模式属性
                 save = getSave.saves[userId]
+                save.setOnlineMode('milkloud')
+                if (cloudUsername) save.cloudUsername = cloudUsername
                 let touchTagged2 = (rankData?.touchRanks || []).map(r => ({ ...r, _cloudMode: 'touch' }))
                 let keyboardTagged2 = (rankData?.keyboardRanks || []).map(r => ({ ...r, _cloudMode: 'keyboard' }))
                 let allRanks2 = [...touchTagged2, ...keyboardTagged2]
                 if (allRanks2.length > 0) {
                     save.importFromCloudRank(allRanks2, cloudRealities)
                 }
+                // 存储纯云端 Best 数据（用于在线模式 B20 计算）
+                save.cloudBestData = allRanks2
                 if (recentRecords && recentRecords.length > 0) {
                     save.importFromCloudRecent(recentRecords)
                 }
@@ -686,7 +855,8 @@ export class milcloud extends milPluginBase {
 
                 // Reality 不一致提示（使用用户模式的 Reality）
                 let localB20 = save.getB20WithReality(20, getInfo, userMode)
-                let finalDiff = cloudRealityForMode != null ? cloudRealityForMode - localB20.reality : 0
+                let finalDiff = cloudRealityForMode != null
+                    ? fCompute.floorReality(cloudRealityForMode) - fCompute.floorReality(localB20.reality) : 0
                 if (cloudRealityForMode != null && cloudRealityForMode > 0 && Math.abs(finalDiff) >= 0.01) {
                     let reason = finalDiff > 0
                         ? '云端有新成绩未同步或定数变更'
@@ -696,11 +866,6 @@ export class milcloud extends milPluginBase {
                         `差值: ${finalDiff.toFixed(4)} | ${reason}`,
                         true
                     )
-                }
-                // 逐曲差异提示
-                let diffMsgs = save.getB20DiffText(getInfo, userMode)
-                if (diffMsgs) {
-                    await sendB20Diff(e, diffMsgs)
                 }
             } else {
                 let hasChanges = recentUpdateEntry && recentUpdateEntry.totalChanges > 0
@@ -717,11 +882,6 @@ export class milcloud extends milPluginBase {
                     `云端 Reality(${userMode === 'touch' ? '触屏' : userMode === 'keyboard' ? '键盘' : '合并'}): ${cloudRealityForMode?.toFixed(4) || '未知'}${note}（未触发全量下载）${noChangesHint}`,
                     true
                 )
-                // 逐曲差异提示（未触发全量时也检测）
-                let diffMsgs2 = save.getB20DiffText(getInfo, userMode)
-                if (diffMsgs2) {
-                    await sendB20Diff(e, diffMsgs2)
-                }
             }
         } catch (err) {
             logger.error('[mil-cloud] 云端更新失败:', err)
@@ -826,6 +986,18 @@ export class milcloud extends milPluginBase {
 
             // 将 save 注册到 getSave 并记录更新
             getSave.saves[userId] = save
+            // 恢复在线模式属性（新 SaveManager 默认为离线）
+            save.setOnlineMode('nya_profiler')
+
+            // 存储 Nya Profiler Best 数据（纯在线，用于在线模式 B20）
+            let nyaBestData = [...(queryResult.best20 || []), ...(queryResult.extras || [])]
+            save.cloudBestData = nyaBestData.map(r => ({
+                ...r,
+                _cloudMode: r._cloudMode || 'touch',
+                _cloudReality: r.singleRating,
+                // 统一字段名：Nya API 使用 accuracy，内部统一使用 score_accuracy
+                score_accuracy: r.accuracy ?? r.score_accuracy ?? 0
+            }))
 
             let updateEntry = getSave._recordUpdate(
                 userId,
@@ -900,9 +1072,25 @@ export class milcloud extends milPluginBase {
             }
         }
 
+        // 清除直接令牌（API Token）绑定
+        let directAuth = new MilthmCloudAuth(userId, '', '')
+        await directAuth.loadToken()
+        if (directAuth.isDirectTokenMode()) {
+            await directAuth.clearTokens()
+            didUnbind = true
+        }
+
         if (!didUnbind) {
             send.send_with_At(e, '你还没有授权云存档哦~')
             return true
+        }
+
+        // 切换至离线模式，清除云端 Best 数据
+        let saveUnbind = getSave.saves[userId]
+        if (saveUnbind) {
+            saveUnbind.setOfflineMode()
+            saveUnbind.cloudBestData = []
+            saveUnbind.saveCache()
         }
 
         send.send_with_At(e,

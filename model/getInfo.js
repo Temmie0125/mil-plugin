@@ -253,7 +253,7 @@ class GetInfo {
                 let chart = rawInfo.difficulty[diffName]
                 result.chart[diffName] = {
                     chartid: chart.chartid,
-                    difficulty: chart.difficultyValue || chart.difficultyValuev2 || 0,
+                    difficulty: chart.difficultyValue || 0,
                     isMultiFinger: chart.IsMania === 1,
                     charter: chart.charter || '',
                     tap: chart.tap || 0,

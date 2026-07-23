@@ -1,6 +1,6 @@
 /**
  * 个人设置命令
- * #mil myset — 查看/修改个人设置（云存档模式选择）
+ * #mil myset — 查看/修改个人设置（平台模式选择）
  */
 import Config from '../components/Config.js'
 import send from '../model/send.js'
@@ -11,22 +11,22 @@ import UserSettingsStore from '../model/userSettings.js'
 import milPluginBase from '../components/baseClass.js'
 import Version from '../components/Version.js'
 
-/** 云存档模式元数据 */
+/** 平台模式元数据 */
 const CLOUD_MODE_META = {
     cloudMode: {
         key: 'cloudMode',
-        title: '云存档模式',
-        description: '使用#mil myset <mode> <id>选择查看触屏（移动端）或键盘（PC）平台的成绩。注意：本地存档不含平台信息，始终会显示。',
+        title: '平台模式',
+        description: '选择查看触屏（移动端）或键盘（PC）平台的成绩。已绑定云平台时自动使用在线数据，未绑定时使用本地存档计算。',
         aliases: ['cloudMode', 'cloudmode', 'mode', '模式', '平台', 'cloud']
     }
 }
 
-/** 云存档模式选项 */
+/** 平台模式选项 */
 const CLOUD_MODE_OPTIONS = {
     cloudMode: {
-        touch:    { value: 'touch',    title: '[0] 触屏模式',    description: '仅显示触屏游玩的云端成绩（默认）' },
-        keyboard: { value: 'keyboard', title: '[1] 键盘模式',    description: '仅显示PC键盘游玩的云端成绩' },
-        merge:    { value: 'merge',    title: '[2] 合并模式',    description: '显示所有平台的云端成绩（原有行为）' }
+        touch:    { value: 'touch',    title: '[0] 触屏模式',    description: '仅显示触屏（移动端）成绩（默认）' },
+        keyboard: { value: 'keyboard', title: '[1] 键盘模式',    description: '仅显示PC键盘端成绩' },
+        merge:    { value: 'merge',    title: '[2] 合并模式',    description: '显示所有平台成绩' }
     }
 }
 
@@ -152,8 +152,8 @@ export class milsetting extends milPluginBase {
         let items = [
             {
                 key: 'cloudMode',
-                title: '云存档模式',
-                description: '使用#mil myset <mode> <id>选择查看触屏（移动端）或键盘（PC）平台的成绩。本地存档不含平台信息，始终会显示。切换后即时生效，无需重新更新。',
+                title: '平台模式',
+                description: '选择查看触屏（移动端）或键盘（PC）平台的成绩。已绑定云平台时自动使用在线数据，未绑定时使用本地存档。切换后即时生效，无需重新更新。',
                 currentTitle: MODE_TITLE[currentMode] || '触屏模式',
                 options: Object.values(optionMap).map(opt => ({
                     value: opt.value,

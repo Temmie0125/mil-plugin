@@ -1,7 +1,7 @@
 
 const Version = {
-    ver: 'v1.0.1',
-    milthm: '5.3.2'
+    ver: 'v1.1.0',
+    milthm: '6.0.0'
 }
 
 export default Version

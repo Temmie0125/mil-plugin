@@ -110,6 +110,21 @@ body {
     letter-spacing: 1px;
 }
 
+.atlas-removed-tag {
+    font-size: 14px;
+    color: #ff6b6b;
+    margin-top: 4px;
+    letter-spacing: 1px;
+}
+
+.atlas-spinfo {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 8px;
+    font-style: italic;
+    max-width: 500px;
+}
+
 /* Round corner clip box */
 .clip-box {
     border-radius: 12px;

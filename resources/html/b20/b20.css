@@ -141,6 +141,18 @@ body p {
     opacity: 0.7;
 }
 
+.source-box {
+    position: absolute;
+    left: 18%;
+    bottom: -12px;
+    z-index: 1;
+}
+
+.source-box p {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
 .recordInfo {
     position: absolute;
     width: 22%;

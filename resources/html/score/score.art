@@ -13,6 +13,12 @@
             {{if chapter_zh}}
             <div style="opacity:0.4;font-size:13px;margin-top:4px;">{{chapter_zh}}</div>
             {{/if}}
+            {{if isRemoved}}
+            <div style="color:#ff6b6b;font-size:12px;margin-top:4px;">⚠ 该曲目已从游戏中移除</div>
+            {{/if}}
+            {{if spinfo}}
+            <div style="opacity:0.5;font-size:12px;margin-top:2px;">{{spinfo}}</div>
+            {{/if}}
         </div>
     <div class="player-bar">
         <div class="player-avatar">
@@ -61,6 +67,9 @@
                     <span class="dif-badge dif-{{data.level}}">{{data.levelAbbr || data.level}}</span>
                     <span style="margin-left:8px;opacity:0.5;">{{data.difficulty.toFixed(1)}}</span>
                 </div>
+                {{if data.isMultiFinger}}
+                <span style="background:#ff9800;color:#fff;font-size:10px;padding:1px 4px;border-radius:3px;margin-left:4px;">多指</span>
+                {{/if}}
                 {{if data.gradeIcon}}
                 <div class="score-grade-badge">
                     <img src="{{_res_path}}icon/{{data.gradeIcon}}.png" alt="{{data.grade}}">

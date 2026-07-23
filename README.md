@@ -5,8 +5,8 @@
   <img alt="GitHub issues" src="https://img.shields.io/github/issues/Temmie0125/mil-plugin?style=flat-square"/>
   <img alt="GitHub license" src="https://img.shields.io/github/license/Temmie0125/mil-plugin?style=flat-square"/>
   <img alt="GitHub stars" src="https://img.shields.io/github/stars/Temmie0125/mil-plugin?style=social"/>
-  <img alt="插件版本" src="https://img.shields.io/badge/插件版本-1.0.1-9cf?style=flat-square"/>
-  <img alt="Milthm" src="https://img.shields.io/badge/Milthm-5.3.2-9cf?style=flat-square"/>
+  <img alt="插件版本" src="https://img.shields.io/badge/插件版本-1.1.0-9cf?style=flat-square"/>
+  <img alt="Milthm" src="https://img.shields.io/badge/Milthm-6.0.0-9cf?style=flat-square"/>
 </p>
 
 ### 介绍
@@ -148,11 +148,13 @@ data/
 >
 > **3. 旧版成绩** — v4.0 以前的成绩不会被上传到云端。
 >
-> **本插件的处理策略**：
-> - 从云端同时拉取 Touch 和 Keyboard 两端的 Rank/Recent 数据，合并后取同谱面最高分、最高 acc
-> - B20 差异检测会列出云端与存档不一致的曲目（含难度），方便你针对性消除差异
-> - 对于**专注单一设备端**的玩家（仅移动端 / 仅 PC 端），插件已能较好地保持云端与存档显示一致
-> - 如果你**双端同时游玩**，由于两端排名独立，可能会出现一定偏差。建议将不一致的曲目在常用端重新在线游玩一次即可同步
+> **4. v6.0.0 起** — v2 成绩（game_version < 4.0）不再计入 Reality；Reality 显示改为向下取整；多指谱面不计入 Reality。
+>
+> **v6.0.0 在线/离线模式分离**：
+> - **在线模式**（已绑定 Milkloud / Nya Profiler）：B20 使用纯云端 Rank 数据，与游戏内显示完全一致
+> - **离线模式**（未绑定）：B20 使用本地存档计算（上传 `.db` 文件导入）
+> - 已绑定用户仍可导入存档，数据仅用于补充详细判定和离线回退
+> - 使用 `#mil myset` 可切换触屏/键盘/合并模式，双端 Reality 独立计算
 >
 > **出现差异时的解决方式**：使用 `/mil b20` 或 `/mil update` 后查看差异提示，将列出的曲目重新在线游玩一遍即可消除差异。
 
@@ -225,6 +227,20 @@ data/
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Temmie0125/mil-plugin&type=date&legend=top-left" />
  </picture>
 </a>
+
+### 更新日志
+
+#### v1.1.0 — Milthm 6.0.0 适配
+
+- **在线/离线模式分离**：已绑定云平台时 B20 使用纯在线数据（与游戏内一致），未绑定时使用本地存档
+- **v2 成绩排除**：game_version < 4.0 的旧版成绩不再计入 Reality（仍可在单曲查询中查看）
+- **多指谱面排除**：`IsMania` 谱面不参与 B20/Reality 计算
+- **已移除曲目处理**：`tags: ["removed"]` 的曲目在图鉴中保留但排除出 B20/统计/小游戏
+- **Reality 向下取整**：显示值从四舍五入改为 `Math.floor(r*100)/100`（与 6.0.0 游戏规则一致）
+- **ACC 解耦修复**：同谱面 v2/v3 并存时 ACC 现在独立取最高值
+- **图鉴增强**：已移除曲目标记 + `spinfo` 补充说明展示
+- **平台模式**：`#mil myset` 支持触屏/键盘/合并，双端 Reality 独立
+- **OVERFLOW 补充**：在线模式下从本地存档补充 B20 以外的成绩条目
 
 ### 免责声明
 

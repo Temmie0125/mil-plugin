@@ -300,14 +300,15 @@ export default class UpdateLog {
         return {
             date: dateStr,
             username,
-            beforeReality: reality,
-            afterReality: reality,
+            beforeReality: fCompute.floorReality(reality),
+            afterReality: fCompute.floorReality(reality),
             realityDelta: 0,
             starLevel,
             totalChanges: scored.length,
             changes,
             _allChangesCount: scored.length,
-            _isFirstImport: true
+            _isFirstImport: true,
+            dataSource: 'offline'
         }
     }
 
@@ -377,14 +378,15 @@ export default class UpdateLog {
         return {
             date: dateStr,
             username,
-            beforeReality: oldReality,
-            afterReality: newReality,
-            realityDelta: newReality - oldReality,
+            beforeReality: fCompute.floorReality(oldReality),
+            afterReality: fCompute.floorReality(newReality),
+            realityDelta: fCompute.floorReality(newReality - oldReality),
             starLevel,
             totalChanges: changes.length,
             changes: displayChanges,
             _allChangesCount: changes.length,
-            _isFirstImport: false
+            _isFirstImport: false,
+            dataSource: 'offline'
         }
     }
 
@@ -521,26 +523,36 @@ export default class UpdateLog {
 
         let perChart = {}
         for (let s of scores) {
+            // 过滤链：v2 成绩 → 多指谱面 → 已移除曲目
+            let gameVer = parseGameVersion(s.game_version)
+            if (gameVer < 4.0) continue
+            let songKey = getInfo.chartIdToSongKey(s.chart_id)
+            let chartInfo = null
+            let excluded = false
+            if (songKey) {
+                let info = getInfo.info(songKey)
+                if (info) {
+                    if (getInfo.isRemovedSong(songKey)) continue
+                    for (let level of fCompute.Level) {
+                        if (info.chart[level]?.chartid === s.chart_id) {
+                            if (info.chart[level].isMultiFinger) { excluded = true; break }
+                            chartInfo = info.chart[level]
+                            break
+                        }
+                    }
+                    if (excluded) continue
+                }
+            }
+
             let rlt
 
             if (s._nyaSingleRating != null) {
                 rlt = s._nyaSingleRating
             } else {
-                let songKey = getInfo.chartIdToSongKey(s.chart_id)
-                if (!songKey) continue
-                let info = getInfo.info(songKey)
-                if (!info) continue
-
-                let difficulty = 0
-                for (let level of fCompute.Level) {
-                    if (info.chart[level]?.chartid === s.chart_id) {
-                        difficulty = info.chart[level].difficulty || 0
-                        break
-                    }
-                }
+                if (!songKey || !chartInfo) continue
+                let difficulty = chartInfo.difficulty || 0
                 if (difficulty <= 0) continue
 
-                let gameVer = parseGameVersion(s.game_version)
                 rlt = calcReality(s.score, difficulty, gameVer, s.score_accuracy)
             }
 

@@ -50,6 +50,15 @@ class GetSave {
         let result = await save.importSave(filePath)
 
         if (result.success) {
+            // 保留旧存档的在线模式属性（新 SaveManager 默认全部为离线/null）
+            let oldSave = this.saves[userId]
+            if (oldSave) {
+                save.isOnlineMode = oldSave.isOnlineMode
+                save.onlineBackend = oldSave.onlineBackend
+                save.cloudBestData = oldSave.cloudBestData
+                save.cloudUsername = oldSave.cloudUsername
+                save.cloudData = oldSave.cloudData
+            }
             this.saves[userId] = save
 
             if (!opts.noRecord) {
@@ -80,6 +89,15 @@ class GetSave {
         let result = save.parseJSONSave(jsonStr)
 
         if (result.success) {
+            // 保留旧存档的在线模式属性（新 SaveManager 默认全部为离线/null）
+            let oldSave = this.saves[userId]
+            if (oldSave) {
+                save.isOnlineMode = oldSave.isOnlineMode
+                save.onlineBackend = oldSave.onlineBackend
+                save.cloudBestData = oldSave.cloudBestData
+                save.cloudUsername = oldSave.cloudUsername
+                save.cloudData = oldSave.cloudData
+            }
             this.saves[userId] = save
             save.saveCache()
 

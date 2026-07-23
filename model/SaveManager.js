@@ -51,6 +51,37 @@ export default class SaveManager {
         }
         /** @type {string|null} Milthm 云用户名（用于 Rank/Recent 接口，获取后持久化缓存） */
         this.cloudUsername = null
+        /** @type {boolean} 是否处于在线模式（已绑定云平台且有数据） */
+        this.isOnlineMode = false
+        /** @type {'milkloud'|'nya_profiler'|null} 在线模式后端 */
+        this.onlineBackend = null
+        /** @type {any[]} 云端 Best 数据（纯在线，不混合本地存档） */
+        this.cloudBestData = []
+    }
+
+    /**
+     * 设置在线模式
+     * @param {'milkloud'|'nya_profiler'} backend - 在线后端
+     */
+    setOnlineMode(backend) {
+        this.isOnlineMode = true
+        this.onlineBackend = backend
+    }
+
+    /**
+     * 设置离线模式（解绑后或未绑定）
+     */
+    setOfflineMode() {
+        this.isOnlineMode = false
+        this.onlineBackend = null
+    }
+
+    /**
+     * 判断当前是否为在线模式（已绑定且云端 Best 数据可用）
+     * @returns {boolean}
+     */
+    isOnline() {
+        return this.isOnlineMode && this.cloudBestData.length > 0
     }
 
     /**
@@ -388,6 +419,24 @@ export default class SaveManager {
     }
 
     /**
+     * 判断成绩记录是否应在 B20/Reality 计算中排除
+     * 过滤链：v2 成绩 → 多指谱面 → 已移除曲目
+     * @param {object} chartInfo - 来自 getInfo.info() 的 chart[level] 对象，null 表示未匹配
+     * @param {string} songKey - 歌曲 key，null 表示未匹配
+     * @param {number} gameVer - parseGameVersion 后的版本号
+     * @returns {boolean} true = 应排除
+     */
+    _isScoreExcludedForReality(chartInfo, songKey, gameVer) {
+        // 1. v2 成绩排除（game_version < 4.0 不计入 Reality）
+        if (gameVer < 4.0) return true
+        // 2. 多指谱面排除
+        if (chartInfo?.isMultiFinger) return true
+        // 3. 已移除曲目排除
+        if (songKey && getInfo.isRemovedSong(songKey)) return true
+        return false
+    }
+
+    /**
      * 按谱面+版本组去重，同(chart_id, versionGroup)保留最高分
      * 这样同一谱面的旧版和新版分数独立保留，Reality 计算时各取正确公式
      */
@@ -422,6 +471,9 @@ export default class SaveManager {
             cloudRecentPlay: this.cloudRecentPlay,
             cloudData: this.cloudData,
             cloudUsername: this.cloudUsername,
+            isOnlineMode: this.isOnlineMode,
+            onlineBackend: this.onlineBackend,
+            cloudBestData: this.cloudBestData,
             updatedAt: new Date().toISOString()
         }
         fs.writeFileSync(this.cachePath, JSON.stringify(cacheData, null, '\t'))
@@ -444,6 +496,9 @@ export default class SaveManager {
                 this.cloudRankReality = data.cloudRankReality ?? null
                 this.cloudRecentPlay = data.cloudRecentPlay || null
                 this.cloudUsername = data.cloudUsername || null
+                this.isOnlineMode = data.isOnlineMode || false
+                this.onlineBackend = data.onlineBackend || null
+                this.cloudBestData = data.cloudBestData || []
 
                 // 加载 cloudData（新版格式），缺失时从旧字段迁移
                 if (data.cloudData) {
@@ -555,6 +610,12 @@ export default class SaveManager {
     getB20WithReality(n = 20, getInfo, mode = 'merge') {
         this.ensureLoaded()
 
+        // 在线模式：使用纯云端 Best 数据，不混合本地存档
+        if (this.isOnline()) {
+            return this.getOnlineB20(n, getInfo, mode)
+        }
+
+        // 离线模式：使用本地存档数据（原有逻辑）
         // 按模式过滤云端记录：本地存档记录（无 _cloudMode 标记）始终保留
         let filtered = this.scores
         if (mode === 'touch') {
@@ -563,6 +624,29 @@ export default class SaveManager {
             filtered = this.scores.filter(s => !s._cloudMode || s._cloudMode === 'keyboard')
         }
         // mode === 'merge'：不筛选，全部保留
+
+        // 过滤链：v2 成绩 → 多指谱面 → 已移除曲目
+        filtered = filtered.filter(record => {
+            let gameVer = parseGameVersion(record.game_version)
+            // v2 成绩排除
+            if (gameVer < 4.0) return false
+            let songKey = getInfo.chartIdToSongKey(record.chart_id)
+            if (songKey) {
+                let info = getInfo.info(songKey)
+                if (info) {
+                    for (let level of fCompute.Level) {
+                        if (info.chart[level]?.chartid === record.chart_id) {
+                            // 多指谱面排除
+                            if (info.chart[level].isMultiFinger) return false
+                            break
+                        }
+                    }
+                    // 已移除曲目排除
+                    if (getInfo.isRemovedSong(songKey)) return false
+                }
+            }
+            return true
+        })
 
         // 1. 为每条成绩计算 Reality
         let scored = filtered.map(record => {
@@ -620,7 +704,152 @@ export default class SaveManager {
             ? top20.reduce((sum, s) => sum + s._reality, 0) / top20.length
             : 0
 
-        return { scores: topN, reality }
+        return { scores: topN, reality, displayReality: fCompute.floorReality(reality) }
+    }
+
+    /**
+     * 从云端 Best 数据构建 B20（纯在线模式）
+     * 仅使用 Rank API 返回的 Best 数据，不混合本地存档
+     * @param {number} n - 获取数量
+     * @param {object} getInfo - getInfo 实例
+     * @param {'touch'|'keyboard'|'merge'} mode - 平台模式
+     * @returns {{ scores: object[], reality: number }}
+     */
+    getOnlineB20(n = 20, getInfo, mode = 'touch') {
+        // 1. 获取对应平台的云端 Best 数据
+        let bestData
+        if (mode === 'touch') {
+            bestData = this.cloudBestData.filter(s => s._cloudMode === 'touch')
+        } else if (mode === 'keyboard') {
+            bestData = this.cloudBestData.filter(s => s._cloudMode === 'keyboard')
+        } else {
+            // merge: 合并双端数据，同 chart_id 后续去重取最高 Reality
+            bestData = [...this.cloudBestData]
+        }
+
+        // 2. 按 chart_id 分组，取最高 Reality（兼容 _cloudReality / reality / singleRating 三种字段名）
+        let _getRlt = (s) => s._cloudReality || s.reality || s.singleRating || 0
+        let bestPerChart = {}
+        for (let s of bestData) {
+            let cid = s.chart_id
+            let rlt = _getRlt(s)
+            if (!bestPerChart[cid] || rlt > _getRlt(bestPerChart[cid])) {
+                bestPerChart[cid] = s
+            }
+        }
+        let bestList = Object.values(bestPerChart)
+
+        // 3. 按 Reality 降序，同 Reality 按分数降序
+        bestList.sort((a, b) => _getRlt(b) - _getRlt(a) || (b.score || 0) - (a.score || 0))
+
+        // 4. 将云端条目映射为显示格式，记录 chart_id 用于后续去重
+        let cloudChartIds = new Set()
+        let cloudMapped = bestList.map(s => {
+            let cid = s.chart_id
+            cloudChartIds.add(cid)
+            let localScore = this.getChartScore(cid)
+            return {
+                ...s,
+                _reality: _getRlt(s),
+                _difficulty: s._difficulty || this.getChartDifficulty(cid, getInfo),
+                _displayScore: localScore
+                    ? Math.max(localScore.score || 0, s.score || 0)
+                    : (s.score || 0),
+                _displayAccuracy: localScore
+                    ? Math.max(localScore.score_accuracy || 0, s.score_accuracy || 0)
+                    : (s.score_accuracy || 0)
+            }
+        })
+
+        // 5. 若云端数据不足 n 条，从本地存档补充 OVERFLOW 条目
+        //    （首次 update 会下载全量存档，后续通过 Rank/Recent 累积本地数据）
+        let topN = [...cloudMapped]
+        if (topN.length < n && this.scores.length > 0) {
+            let localFiltered = this.scores
+            if (mode === 'touch') {
+                localFiltered = this.scores.filter(s => !s._cloudMode || s._cloudMode === 'touch')
+            } else if (mode === 'keyboard') {
+                localFiltered = this.scores.filter(s => !s._cloudMode || s._cloudMode === 'keyboard')
+            }
+
+            // 过滤链：v2 成绩 → 多指谱面 → 已移除曲目
+            localFiltered = localFiltered.filter(record => {
+                let gameVer = parseGameVersion(record.game_version)
+                if (gameVer < 4.0) return false
+                let songKey = getInfo.chartIdToSongKey(record.chart_id)
+                if (songKey) {
+                    let info = getInfo.info(songKey)
+                    if (info) {
+                        for (let level of fCompute.Level) {
+                            if (info.chart[level]?.chartid === record.chart_id) {
+                                if (info.chart[level].isMultiFinger) return false
+                                break
+                            }
+                        }
+                        if (getInfo.isRemovedSong(songKey)) return false
+                    }
+                }
+                return true
+            })
+
+            // 计算 Reality，排除已在云端 B20 列表中的 chart_id
+            let localScored = localFiltered
+                .filter(s => !cloudChartIds.has(s.chart_id))
+                .map(record => {
+                    let singleRlt, difficulty
+                    if (record._nyaSingleRating != null) {
+                        singleRlt = record._nyaSingleRating
+                        difficulty = record._nyaDifficulty || 0
+                    } else {
+                        difficulty = this.getChartDifficulty(record.chart_id, getInfo)
+                        let gameVer = parseGameVersion(record.game_version)
+                        singleRlt = calcReality(record.score, difficulty, gameVer, record.score_accuracy)
+                    }
+                    return { ...record, _reality: singleRlt, _difficulty: difficulty }
+                })
+
+            // 按 chart_id 去重取最高 Reality，同时追踪最高分/acc（复用 Phase 1 ACC 解耦逻辑）
+            let localBestPerChart = {}
+            let localMaxScorePerChart = {}
+            for (let s of localScored) {
+                let cid = s.chart_id
+                if (!localBestPerChart[cid] || s._reality > localBestPerChart[cid]._reality) {
+                    localBestPerChart[cid] = s
+                }
+                if (!localMaxScorePerChart[cid]) {
+                    localMaxScorePerChart[cid] = { score: s.score, accuracy: s.score_accuracy || 0 }
+                } else {
+                    if (s.score > localMaxScorePerChart[cid].score) {
+                        localMaxScorePerChart[cid].score = s.score
+                    }
+                    if ((s.score_accuracy || 0) > localMaxScorePerChart[cid].accuracy) {
+                        localMaxScorePerChart[cid].accuracy = s.score_accuracy || 0
+                    }
+                }
+            }
+            let localBestList = Object.values(localBestPerChart)
+            localBestList.sort((a, b) => b._reality - a._reality || b.score - a.score)
+
+            let needed = n - topN.length
+            let overflowEntries = localBestList.slice(0, needed).map(s => {
+                let cid = s.chart_id
+                let maxInfo = localMaxScorePerChart[cid]
+                return {
+                    ...s,
+                    _displayScore: maxInfo ? maxInfo.score : s.score,
+                    _displayAccuracy: maxInfo ? maxInfo.accuracy : (s.score_accuracy || 0)
+                }
+            })
+            topN = [...cloudMapped, ...overflowEntries]
+        }
+
+        // 6. 计算 B20 Reality（仅使用云端数据的前 20 条，不受 OVERFLOW 补充数据影响）
+        let top20 = cloudMapped.slice(0, Math.min(20, cloudMapped.length))
+        let reality = top20.length > 0
+            ? top20.reduce((sum, s) => sum + (s._reality || 0), 0) / top20.length
+            : 0
+
+        return { scores: topN, reality, displayReality: fCompute.floorReality(reality) }
     }
 
     /**
@@ -642,6 +871,26 @@ export default class SaveManager {
         } else if (mode === 'keyboard') {
             filtered = this.scores.filter(s => !s._cloudMode || s._cloudMode === 'keyboard')
         }
+
+        // 过滤链：v2 成绩 → 多指谱面 → 已移除曲目
+        filtered = filtered.filter(record => {
+            let gameVer = parseGameVersion(record.game_version)
+            if (gameVer < 4.0) return false
+            let songKey = getInfo.chartIdToSongKey(record.chart_id)
+            if (songKey) {
+                let info = getInfo.info(songKey)
+                if (info) {
+                    for (let level of fCompute.Level) {
+                        if (info.chart[level]?.chartid === record.chart_id) {
+                            if (info.chart[level].isMultiFinger) return false
+                            break
+                        }
+                    }
+                    if (getInfo.isRemovedSong(songKey)) return false
+                }
+            }
+            return true
+        })
 
         // 1. 筛选 AP 记录（acc >= 99.99% 即视为 All Perfect）
         let apScores = filtered.filter(s => (s.score_accuracy || 0) >= 0.9999)
@@ -702,7 +951,7 @@ export default class SaveManager {
             ? top20.reduce((sum, s) => sum + s._reality, 0) / top20.length
             : 0
 
-        return { scores: topN, reality }
+        return { scores: topN, reality, displayReality: fCompute.floorReality(reality) }
     }
 
     /**
@@ -1276,6 +1525,9 @@ export default class SaveManager {
                 keyboard: { rankReality: null, recentPlay: null }
             }
             this.cloudUsername = null
+            this.isOnlineMode = false
+            this.onlineBackend = null
+            this.cloudBestData = []
             return true
         } catch (e) {
             return false
@@ -1298,6 +1550,26 @@ export default class SaveManager {
         } else if (mode === 'keyboard') {
             filtered = this.scores.filter(s => !s._cloudMode || s._cloudMode === 'keyboard')
         }
+
+        // 过滤链：v2 成绩 → 多指谱面 → 已移除曲目
+        filtered = filtered.filter(record => {
+            let gameVer = parseGameVersion(record.game_version)
+            if (gameVer < 4.0) return false
+            let songKey = getInfo.chartIdToSongKey(record.chart_id)
+            if (songKey) {
+                let info = getInfo.info(songKey)
+                if (info) {
+                    for (let level of fCompute.Level) {
+                        if (info.chart[level]?.chartid === record.chart_id) {
+                            if (info.chart[level].isMultiFinger) return false
+                            break
+                        }
+                    }
+                    if (getInfo.isRemovedSong(songKey)) return false
+                }
+            }
+            return true
+        })
 
         let scored = filtered
             .filter(s => s._cloudReality != null && s._cloudReality > 0)

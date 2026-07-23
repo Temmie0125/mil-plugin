@@ -17,6 +17,7 @@ import fs from 'fs'
  * @type {string[]}
  */
 let songIdList = Object.keys(getInfo.illMap || {}).filter(id => {
+    if (getInfo.isRemovedSong(id)) return false
     const ill = getInfo.getill(id)
     return ill && fs.existsSync(ill)
 })
