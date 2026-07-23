@@ -3,15 +3,15 @@
  *
  * 原理:
  *   B20 Reality = sum(single_rlt for top 20 charts) / 20
- *   游戏内显示四舍五入到2位小数。
+ *   游戏内显示向下取整到2位小数（6.0.0 起）。
  *
- *   要让显示 +0.01，需要的增量取决于当前 Reality 在四舍五入周期中的位置:
- *     deltaNeeded = floor_display + 0.005 - currentReality
+ *   要让显示 +0.01，需要的增量取决于当前 Reality 在 floor 周期中的位置:
+ *     deltaNeeded = floor_display + 0.01 - currentReality
  *     范围约 0.0001 ~ 0.0100
  *
- *   例: currentReality=12.5000(显示12.50) → 需≥12.505 → delta=0.005
- *       currentReality=12.5050(显示12.51) → 需≥12.515 → delta=0.010
- *       currentReality=12.5149(显示12.51) → 需≥12.515 → delta=0.0001
+ *   例: currentReality=12.3400(显示12.34) → 需≥12.35 → delta=0.0100
+ *       currentReality=12.3499(显示12.34) → 需≥12.35 → delta=0.0001
+ *       currentReality=12.3500(显示12.35) → 需≥12.36 → delta=0.0100
  *
  *   两种情况：
  *   1. 谱面已在 Best20 内：
@@ -117,8 +117,8 @@ export function calcPushSuggestion(params) {
     // 1. 计算当前显示 Reality 和目标的原始 Reality
     const currentDisplay = roundDisplay(currentReality)
     const targetDisplayVal = currentDisplay + 0.01
-    // 目标原始 Reality：至少需要达到 currentDisplay + 0.005（使四舍五入到 targetDisplay）
-    const effectiveDelta = Math.max(0, (currentDisplay + 0.005) - currentReality)
+    // 目标原始 Reality：floor 后需要跃升至下一显示单位（≥ targetDisplayVal）
+    const effectiveDelta = Math.max(0, targetDisplayVal - currentReality)
 
     // 理论最大 Reality
     const chartMaxRlt = chartDifficulty + 1.5
@@ -198,12 +198,12 @@ export function calcPushSuggestion(params) {
 }
 
 /**
- * 将原始 Reality 转为游戏内显示值（四舍五入到2位小数）
+ * 将原始 Reality 转为游戏内显示值（向下取整到2位小数，6.0.0 起游戏内显示规则）
  * @param {number} r - 原始 Reality
  * @returns {number}
  */
 function roundDisplay(r) {
-    return Math.round(r * 100) / 100
+    return Math.floor(r * 100) / 100
 }
 
 export default { calcPushSuggestion, reverseRealityV3 }

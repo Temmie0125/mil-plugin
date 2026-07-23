@@ -585,8 +585,16 @@ export default class SaveManager {
             if (!bestPerChart[cid] || s._reality > bestPerChart[cid]._reality) {
                 bestPerChart[cid] = s
             }
-            if (!maxScorePerChart[cid] || s.score > maxScorePerChart[cid].score) {
+            if (!maxScorePerChart[cid]) {
                 maxScorePerChart[cid] = { score: s.score, accuracy: s.score_accuracy || 0 }
+            } else {
+                // 分数和 acc 各自独立取最高值（修复同谱面 v2/v3 同时存在时 acc 取自低分记录的问题）
+                if (s.score > maxScorePerChart[cid].score) {
+                    maxScorePerChart[cid].score = s.score
+                }
+                if ((s.score_accuracy || 0) > maxScorePerChart[cid].accuracy) {
+                    maxScorePerChart[cid].accuracy = s.score_accuracy || 0
+                }
             }
         }
         let bestList = Object.values(bestPerChart)
@@ -659,8 +667,16 @@ export default class SaveManager {
             if (!bestPerChart[cid] || s._reality > bestPerChart[cid]._reality) {
                 bestPerChart[cid] = s
             }
-            if (!maxScorePerChart[cid] || s.score > maxScorePerChart[cid].score) {
+            if (!maxScorePerChart[cid]) {
                 maxScorePerChart[cid] = { score: s.score, accuracy: s.score_accuracy || 0 }
+            } else {
+                // 分数和 acc 各自独立取最高值（修复同谱面 v2/v3 同时存在时 acc 取自低分记录的问题）
+                if (s.score > maxScorePerChart[cid].score) {
+                    maxScorePerChart[cid].score = s.score
+                }
+                if ((s.score_accuracy || 0) > maxScorePerChart[cid].accuracy) {
+                    maxScorePerChart[cid].accuracy = s.score_accuracy || 0
+                }
             }
         }
         let bestList = Object.values(bestPerChart)

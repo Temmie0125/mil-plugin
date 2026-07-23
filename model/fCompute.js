@@ -119,6 +119,15 @@ function getIconPath(iconName) {
     return `${pluginPath}/resources/icon/${iconName}.png`
 }
 
+/**
+ * Reality 向下取整到小数点后两位（6.0.0 起游戏内显示规则）
+ * @param {number} r - 原始 Reality 值
+ * @returns {number}
+ */
+function floorReality(r) {
+    return Math.floor(r * 100) / 100
+}
+
 export default {
     Level,
     LevelNum,
@@ -127,6 +136,7 @@ export default {
     getScoreGrade,
     getGrade,
     getIconPath,
+    floorReality,
     randArray,
     randFloatBetween,
     randFromArray,

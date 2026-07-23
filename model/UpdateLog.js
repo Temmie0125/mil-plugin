@@ -250,8 +250,17 @@ export default class UpdateLog {
         let maxScorePerChart = {}
         for (let s of scored) {
             let cid = s.chart_id
-            if (!maxScorePerChart[cid] || s.score > maxScorePerChart[cid].score) {
+            if (!maxScorePerChart[cid]) {
                 maxScorePerChart[cid] = { score: s.score, accuracy: s.score_accuracy || 0, record: s }
+            } else {
+                // 分数和 acc 各自独立取最高值；record 跟随最高分（评级由分数决定）
+                if (s.score > maxScorePerChart[cid].score) {
+                    maxScorePerChart[cid].score = s.score
+                    maxScorePerChart[cid].record = s
+                }
+                if ((s.score_accuracy || 0) > maxScorePerChart[cid].accuracy) {
+                    maxScorePerChart[cid].accuracy = s.score_accuracy || 0
+                }
             }
         }
 
