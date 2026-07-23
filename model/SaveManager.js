@@ -380,7 +380,8 @@ export default class SaveManager {
         if (!info) return false
         for (let level of fCompute.Level) {
             if (info.chart[level]?.chartid === chartId) {
-                return info.chart[level].difficulty === 0
+                // 仅当定数为 0 且非多指谱面时，才视为特殊谱面（教程/剧情）
+                return info.chart[level].difficulty === 0 && !info.chart[level].isMultiFinger
             }
         }
         return false

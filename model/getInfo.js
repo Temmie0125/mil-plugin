@@ -241,6 +241,7 @@ class GetInfo {
             songid: rawInfo.songid || '',
             illustration: this.getill(id),
             chart: {},
+            spinfo: rawInfo.spinfo || '',
             tags: rawInfo.tags || [],
             Original: rawInfo.Original || false
         }
@@ -252,6 +253,7 @@ class GetInfo {
                 result.chart[diffName] = {
                     chartid: chart.chartid,
                     difficulty: chart.difficultyValue || chart.difficultyValuev2 || 0,
+                    isMultiFinger: chart.IsMania === 1,
                     charter: chart.charter || '',
                     tap: chart.tap || 0,
                     hold: chart.hold || 0,
@@ -289,6 +291,17 @@ class GetInfo {
      */
     chartIdToSongKey(chartId) {
         return this.chartid_map[chartId] || null
+    }
+
+    /**
+     * 判断歌曲是否已从游戏中移除（不参与成绩计算）
+     * @param {string} songKey
+     * @returns {boolean}
+     */
+    isRemovedSong(songKey) {
+        let songData = this.ori_info[songKey]
+        if (!songData) return false
+        return Array.isArray(songData.tags) && songData.tags.includes('removed')
     }
 
     /**

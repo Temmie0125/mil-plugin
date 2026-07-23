@@ -128,6 +128,27 @@ function floorReality(r) {
     return Math.floor(r * 100) / 100
 }
 
+/**
+ * 判断 chart 是否为多指谱面
+ * @param {object} chartInfo - 来自 getInfo.info() 的 chart[level] 对象
+ * @returns {boolean}
+ */
+function isMultiFingerChart(chartInfo) {
+    return chartInfo?.isMultiFinger === true
+}
+
+/**
+ * 判断谱面是否属于已移除曲目（不参与成绩计算）
+ * @param {string} chartId - 谱面 ID
+ * @param {object} getInfo - getInfo 实例
+ * @returns {boolean}
+ */
+function isRemovedChart(chartId, getInfo) {
+    let songKey = getInfo.chartIdToSongKey(chartId)
+    if (!songKey) return false
+    return getInfo.isRemovedSong(songKey)
+}
+
 export default {
     Level,
     LevelNum,
@@ -137,6 +158,8 @@ export default {
     getGrade,
     getIconPath,
     floorReality,
+    isMultiFingerChart,
+    isRemovedChart,
     randArray,
     randFloatBetween,
     randFromArray,
