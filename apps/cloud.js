@@ -162,7 +162,9 @@ export class milcloud extends milPluginBase {
                 save = new SaveManager(userId)
                 getSave.saves[userId] = save
             }
+            save.ensureLoaded()  // 确保从磁盘加载已有存档数据，避免空覆盖
             save.setOnlineMode('milkloud')
+            save.cloudUsername = cloudUser.username
             save.saveCache()
 
             send.send_with_At(e,
@@ -404,6 +406,7 @@ export class milcloud extends milPluginBase {
                 saveNya = new SaveManager(e.user_id)
                 getSave.saves[e.user_id] = saveNya
             }
+            saveNya.ensureLoaded()  // 确保从磁盘加载已有存档数据，避免空覆盖
             saveNya.setOnlineMode('nya_profiler')
             saveNya.saveCache()
 
@@ -491,6 +494,7 @@ export class milcloud extends milPluginBase {
                     saveBind = new SaveManager(e.user_id)
                     getSave.saves[e.user_id] = saveBind
                 }
+                saveBind.ensureLoaded()  // 确保从磁盘加载已有存档数据，避免空覆盖
                 saveBind.setOnlineMode('milkloud')
                 saveBind.saveCache()
 
@@ -1088,6 +1092,7 @@ export class milcloud extends milPluginBase {
         // 切换至离线模式，清除云端 Best 数据
         let saveUnbind = getSave.saves[userId]
         if (saveUnbind) {
+            saveUnbind.ensureLoaded()  // 确保从磁盘加载已有存档数据，避免空覆盖
             saveUnbind.setOfflineMode()
             saveUnbind.cloudBestData = []
             saveUnbind.saveCache()

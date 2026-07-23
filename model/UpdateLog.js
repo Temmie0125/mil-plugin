@@ -300,8 +300,8 @@ export default class UpdateLog {
         return {
             date: dateStr,
             username,
-            beforeReality: fCompute.floorReality(reality),
-            afterReality: fCompute.floorReality(reality),
+            beforeReality: reality,
+            afterReality: reality,
             realityDelta: 0,
             starLevel,
             totalChanges: scored.length,
@@ -378,9 +378,9 @@ export default class UpdateLog {
         return {
             date: dateStr,
             username,
-            beforeReality: fCompute.floorReality(oldReality),
-            afterReality: fCompute.floorReality(newReality),
-            realityDelta: fCompute.floorReality(newReality - oldReality),
+            beforeReality: oldReality,
+            afterReality: newReality,
+            realityDelta: newReality - oldReality,
             starLevel,
             totalChanges: changes.length,
             changes: displayChanges,
