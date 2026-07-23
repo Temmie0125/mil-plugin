@@ -591,13 +591,9 @@ export class milcloud extends milPluginBase {
     async _updateOIDC(e) {
         let userId = e.user_id
 
-        // 检查配置
+        // OIDC 配置（直接令牌模式下可为空）
         let clientId = this._getClientId()
         let clientSecret = this._getClientSecret()
-        if (!clientId) {
-            send.send_with_At(e, '尚未配置 client_id，请联系 Bot 主人在 Guoba 面板中填写')
-            return true
-        }
 
         // 防重复
         if (updatingUsers.has(userId)) {
