@@ -132,6 +132,7 @@ export class milcloud extends milPluginBase {
             `请提供token或者使用OIDC进行授权哦！\n` +
             `命令格式：\n` +
             `  /${cmdHead} bind <token>  使用API令牌直接绑定${hint}\n\n` +
+            `⚠️ Token 为敏感信息，建议私聊 Bot 进行绑定以避免泄露\n` +
             `使用/${cmdHead} tk help 获取token帮助`
         )
         return true
@@ -167,10 +168,27 @@ export class milcloud extends milPluginBase {
             save.cloudUsername = cloudUser.username
             save.saveCache()
 
+            // 尝试撤回含 Token 的命令消息（群内防止泄露）
+            let recallNote = ''
+            try {
+                let msgId = Array.isArray(e.message_id)
+                    ? e.message_id[0]
+                    : e.message_id
+                if (e.isGroup && e.group?.recallMsg) {
+                    await e.group.recallMsg(msgId)
+                    recallNote = ''
+                } else if (e.friend?.recallMsg) {
+                    await e.friend.recallMsg(msgId)
+                    recallNote = ''
+                } else if (e.isGroup) {
+                    recallNote = '\n⚠️ 请手动撤回含 Token 的命令消息，避免泄露！'
+                }
+            } catch { /* 撤回失败不影响主流程 */ }
+
             send.send_with_At(e,
                 `令牌绑定成功！\n` +
                 `已绑定账号: ${cloudUser.username}\n` +
-                `现在可以使用 /${cmdHead} update 更新云端存档~`
+                `现在可以使用 /${cmdHead} update 更新云端存档~${recallNote}`
             )
         } catch (err) {
             await auth.clearTokens()
