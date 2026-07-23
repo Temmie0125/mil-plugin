@@ -186,7 +186,7 @@ class GetInfo {
 
         for (let key of Object.keys(this.ori_info)) {
             let info = this.ori_info[key]
-            let latin = (typeof info.latinTitle === 'string') ? info.latinTitle : ''
+            let latin = (typeof info.latinTitle === 'string') ? info.latinTitle : key
             let artist = (typeof info.artist === 'string') ? info.artist : ''
 
             // 精确匹配
