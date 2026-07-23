@@ -565,20 +565,24 @@ export class milcloud extends milPluginBase {
         let clientId = this._getClientId()
         let nyaApiKey = this._getNyaApiKey()
 
+        // 优先级：OIDC 配置 > 直接令牌 > Nya Profiler
         if (clientId) {
             return await this._updateOIDC(e)
-        } else if (nyaApiKey) {
-            return await this._updateNya(e)
-        } else {
-            // 检查直接令牌绑定
-            let auth = new MilthmCloudAuth(e.user_id, '', '')
-            await auth.loadToken()
-            if (auth.isDirectTokenMode()) {
-                return await this._updateOIDC(e)
-            }
-            send.send_with_At(e, '尚未配置云存档接口！\n请联系 Bot 主人在 Guoba 面板中填写相关配置，或使用 `/mil bind <token>` 绑定 API 令牌')
-            return true
         }
+
+        // 检查直接令牌绑定（优先于 Nya Profiler）
+        let directAuth = new MilthmCloudAuth(e.user_id, '', '')
+        await directAuth.loadToken()
+        if (directAuth.isDirectTokenMode()) {
+            return await this._updateOIDC(e)
+        }
+
+        if (nyaApiKey) {
+            return await this._updateNya(e)
+        }
+
+        send.send_with_At(e, '尚未配置云存档接口！\n请联系 Bot 主人在 Guoba 面板中填写相关配置，或使用 `/mil bind <token>` 绑定 API 令牌')
+        return true
     }
 
     /**
