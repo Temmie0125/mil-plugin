@@ -170,26 +170,33 @@ export class milcloud extends milPluginBase {
 
             // 尝试撤回含 Token 的命令消息（群内防止泄露）
             let recallNote = ''
-            try {
-                let msgId = Array.isArray(e.message_id)
-                    ? e.message_id[0]
-                    : e.message_id
-                if (e.isGroup && e.group?.recallMsg) {
-                    await e.group.recallMsg(msgId)
-                    recallNote = ''
-                } else if (e.friend?.recallMsg) {
-                    await e.friend.recallMsg(msgId)
-                    recallNote = ''
-                } else if (e.isGroup) {
-                    recallNote = '\n⚠️ 请手动撤回含 Token 的命令消息，避免泄露！'
+            if (e.isGroup && e.group) {
+                let group = e.group
+                if (group.is_admin || group.is_owner) {
+                    recallNote = '\n⚠️ Bot 正在尝试自动撤回您的Token，如失败请手动撤回~'
+                } else {
+                    recallNote = '\n⚠️ Bot 无管理员权限，无法撤回Token，为确保隐私安全，请及时手动撤回！'
                 }
-            } catch { /* 撤回失败不影响主流程 */ }
+            }
 
             send.send_with_At(e,
                 `令牌绑定成功！\n` +
                 `已绑定账号: ${cloudUser.username}\n` +
                 `现在可以使用 /${cmdHead} update 更新云端存档~${recallNote}`
             )
+
+            // 自动撤回含 Token 的命令消息
+            if (e.isGroup && e.group && (e.group.is_admin || e.group.is_owner)) {
+                try {
+                    let msgId = Array.isArray(e.message_id)
+                        ? e.message_id[0]
+                        : e.message_id
+                    await e.group.recallMsg(msgId)
+                    logger.mark(`[mil-cloud] 已自动撤回用户 ${userId} 的 Token 绑定消息`)
+                } catch (err) {
+                    logger.warn(`[mil-cloud] 撤回 Token 消息失败:`, err.message)
+                }
+            }
         } catch (err) {
             await auth.clearTokens()
             if (err.message.includes('[invalid_grant]')) {
