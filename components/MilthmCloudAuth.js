@@ -129,23 +129,30 @@ export default class MilthmCloudAuth {
     }
 
     /**
+     * 标准化 API 令牌为完整 Authorization 头格式
+     * 输入的 token 可能是完整 Authorization 头（如 "Basic xxx"）或仅凭证部分
+     * @param {string} tokenHeader - Authorization 头值或仅凭证
+     * @returns {string} 标准化后的令牌（如 "Basic xxx"）
+     */
+    static normalizeToken(tokenHeader) {
+        let token = String(tokenHeader).trim()
+        // 去掉可能存在的 "Authorization:" 外层前缀（用户可能一键复制完整头）
+        token = token.replace(/^authorization:\s*/i, '')
+        // 标准化：统一为 "Basic xxx" 或 "Bearer xxx" 格式
+        if (!token.toLowerCase().startsWith('basic ') && !token.toLowerCase().startsWith('bearer ')) {
+            // 仅凭证部分，补全为 Basic 格式
+            token = `Basic ${token}`
+        }
+        return token
+    }
+
+    /**
      * 使用直接令牌绑定（用户自行创建的 API Token）
      * 输入的 token 可能是完整 Authorization 头（如 "Basic xxx"）或仅凭证部分
      * @param {string} tokenHeader - Authorization 头值或仅凭证
      */
     async bindWithToken(tokenHeader) {
-        let token = tokenHeader.trim()
-        // 去掉可能存在的 "Authorization:" 外层前缀（用户可能一键复制完整头）
-        token = token.replace(/^authorization:\s*/i, '')
-        // 标准化：统一为 "Basic xxx" 或 "Bearer xxx" 格式
-        if (token.toLowerCase().startsWith('basic ')) {
-            // 已经是完整格式，直接使用
-        } else if (token.toLowerCase().startsWith('bearer ')) {
-            // Bearer token，直接使用
-        } else {
-            // 仅凭证部分，补全为 Basic 格式
-            token = `Basic ${token}`
-        }
+        let token = MilthmCloudAuth.normalizeToken(tokenHeader)
         // 清除旧的 OIDC token，保留新的 directToken
         this._token = null
         await RedisStore.delOidcToken(this.userId)

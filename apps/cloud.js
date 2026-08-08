@@ -18,6 +18,7 @@ import logger from '../components/Logger.js'
 
 import MilthmCloudAuth from '../components/MilthmCloudAuth.js'
 import NyaProfilerAuth from '../components/NyaProfilerAuth.js'
+import TokenBlacklist from '../components/TokenBlacklist.js'
 import UserSettingsStore from '../model/userSettings.js'
 import SaveManager from '../model/SaveManager.js'
 import QRCode from 'qrcode'
@@ -123,18 +124,29 @@ export class milcloud extends milPluginBase {
             }
         }
 
-        // 未绑定，显示帮助
+        // 未绑定，显示帮助（有 client_id 配置时推荐优先 OIDC）
         let hasClientId = !!clientId
-        let hint = hasClientId
-            ? `\n  /${cmdHead} bind OIDC      通过OIDC流程授权`
-            : ''
-        send.send_with_At(e,
-            `请提供token或者使用OIDC进行授权哦！\n` +
-            `命令格式：\n` +
-            `  /${cmdHead} bind <token>  使用API令牌直接绑定${hint}\n\n` +
-            `⚠️ Token 为敏感信息，建议私聊 Bot 进行绑定以避免泄露\n` +
-            `使用/${cmdHead} tk help 获取token帮助`
-        )
+        let privateOnly = this._isTokenPrivateOnly()
+        let tokenBindHint = privateOnly ? '（仅限私信）' : ''
+        let lines = [
+            `请选择一种方式授权云存档哦！`,
+            `命令格式：`,
+        ]
+        if (hasClientId) {
+            lines.push(`  /${cmdHead} bind OIDC      通过 OIDC 流程授权（推荐，Token 自动续期）`)
+            lines.push(`  /${cmdHead} bind <token>   使用 API 令牌直接绑定${tokenBindHint}`)
+        } else {
+            lines.push(`  /${cmdHead} bind <token>   使用 API 令牌直接绑定${tokenBindHint}`)
+            lines.push(`（提示：联系 Bot 主人配置 OIDC client_id 后，可使用 /${cmdHead} bind OIDC 一键授权）`)
+        }
+        lines.push('')
+        if (privateOnly) {
+            lines.push(`⚠️ 当前 Bot 已开启「Token 仅限私信绑定」，群聊中的 Token 绑定将被拒绝\n请私信 Bot 发送绑定命令`)
+        } else {
+            lines.push(`⚠️ Token 为敏感信息，建议私聊 Bot 进行绑定以避免泄露`)
+        }
+        lines.push(`使用/${cmdHead} tk help 获取 Token 帮助`)
+        send.send_with_At(e, lines.join('\n'))
         return true
     }
 
@@ -147,8 +159,45 @@ export class milcloud extends milPluginBase {
         let userId = e.user_id
         let cmdHead = Config.getUserCfg('config', 'cmdhead')
 
+        // 标准化令牌（与 bindWithToken 内部一致），用于黑名单哈希
+        let normalized = MilthmCloudAuth.normalizeToken(token)
+
+        // 配置启用时：群聊内禁止直接 Token 绑定（OIDC 不受影响）
+        // 群内已发送的 Token 视为可能泄露，标记拒用，需重新创建后私信绑定
+        if (this._isTokenPrivateOnly() && e.isGroup) {
+            TokenBlacklist.blacklist(normalized)
+            logger.warn(`[mil-cloud] 已拒绝群聊 Token 绑定并标记令牌拒用: ${TokenBlacklist.hash(normalized).slice(0, 12)}...`)
+
+            let recallNote = ''
+            if (e.group && (e.group.is_admin || e.group.is_owner)) {
+                if (await this._tryRecallMsg(e)) {
+                    recallNote = '\n（含 Token 的消息已自动撤回）'
+                }
+            } else {
+                recallNote = '\n⚠️ Bot 无管理员权限无法撤回消息，请务必手动撤回！'
+            }
+
+            send.send_with_At(e,
+                `⚠️ 出于安全考虑，Bot 已开启「Token 仅限私信绑定」\n` +
+                `在群聊中发送 Token 存在泄露风险，本次绑定已拒绝\n\n` +
+                `该 Token 已被标记为不可用，请前往 milkloud.milthm.cn 重新创建令牌\n` +
+                `然后私信 Bot 发送 /${cmdHead} bind <token> 完成绑定${recallNote}`
+            )
+            return true
+        }
+
+        // 已被拒用的令牌（此前在群聊泄露）不可再次绑定
+        if (TokenBlacklist.isBlacklisted(normalized)) {
+            send.send_with_At(e,
+                `⚠️ 该 Token 曾因在群聊中泄露被标记为不可用\n` +
+                `为确保账号安全，请前往 milkloud.milthm.cn 重新创建令牌\n` +
+                `然后私信 Bot 发送 /${cmdHead} bind <token> 完成绑定`
+            )
+            return true
+        }
+
         let auth = new MilthmCloudAuth(userId, '', '')
-        await auth.bindWithToken(token)
+        await auth.bindWithToken(normalized)
 
         // 验证令牌有效性
         try {
@@ -187,15 +236,7 @@ export class milcloud extends milPluginBase {
 
             // 自动撤回含 Token 的命令消息
             if (e.isGroup && e.group && (e.group.is_admin || e.group.is_owner)) {
-                try {
-                    let msgId = Array.isArray(e.message_id)
-                        ? e.message_id[0]
-                        : e.message_id
-                    await e.group.recallMsg(msgId)
-                    logger.mark(`[mil-cloud] 已自动撤回用户 ${userId} 的 Token 绑定消息`)
-                } catch (err) {
-                    logger.warn(`[mil-cloud] 撤回 Token 消息失败:`, err.message)
-                }
+                await this._tryRecallMsg(e)
             }
         } catch (err) {
             await auth.clearTokens()
@@ -230,7 +271,14 @@ export class milcloud extends milPluginBase {
             `5. 使用 /${cmdHead} bind <令牌> 绑定`,
             ``,
             `提示：令牌不依赖 Bot 端配置，可直接使用`,
-        ].join('\n')
+        ]
+        if (this._isTokenPrivateOnly()) {
+            msg.push(
+                ``,
+                `⚠️ 当前 Bot 已开启「Token 仅限私信绑定」\n请在私信中发送 /${cmdHead} bind <令牌> 完成绑定`,
+            )
+        }
+        msg = msg.join('\n')
 
         if (fs.existsSync(helpImg)) {
             await send.send_with_At(e, [msg, segment.image(`file:///${helpImg.replace(/\\/g, '/')}`)])
@@ -1145,6 +1193,34 @@ export class milcloud extends milPluginBase {
 
     _getNyaApiKey() {
         return String(Config.getUserCfg('config', 'nya_api_key') || '').trim()
+    }
+
+    /**
+     * 是否开启「Token 仅限私信绑定」
+     * @returns {boolean}
+     */
+    _isTokenPrivateOnly() {
+        return !!Config.getUserCfg('config', 'tokenPrivateOnly')
+    }
+
+    /**
+     * 尝试撤回当前命令消息（群内，仅在有管理权限时）
+     * @param {*} e - 事件对象
+     * @returns {Promise<boolean>} 是否撤回成功
+     */
+    async _tryRecallMsg(e) {
+        if (!e.isGroup || !e.group) return false
+        let msgId = Array.isArray(e.message_id)
+            ? e.message_id[0]
+            : e.message_id
+        try {
+            await e.group.recallMsg(msgId)
+            logger.mark(`[mil-cloud] 已自动撤回用户 ${e.user_id} 的 Token 绑定消息`)
+            return true
+        } catch (err) {
+            logger.warn(`[mil-cloud] 撤回 Token 消息失败:`, err.message)
+            return false
+        }
     }
 
     _getNyaCacheTTL() {

@@ -52,6 +52,11 @@ client_id: ""
 #  Milthm 云存档 OIDC client_secret（留空禁用）
 client_secret: ""
 
+#  Token 仅允许私信绑定（true/false）
+#  开启后群聊内禁止直接 Token 绑定（OIDC 不受影响），防止 Token 在群内泄露
+#  被拒绝的 Token 将标记为不可用，需重新创建后私信绑定
+tokenPrivateOnly: true
+
 #  Re Nya Profiler API Key（留空禁用）
 #  在 https://renya.mhtlim.top/apikey 创建
 #  优先级低于官方 OIDC（client_id），仅当 client_id 未配置时才使用此接口

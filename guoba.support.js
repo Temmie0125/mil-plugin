@@ -190,6 +190,12 @@ export function supportGuoba() {
                     },
                 },
                 {
+                    field: 'tokenPrivateOnly',
+                    label: 'Token仅限私信绑定',
+                    bottomHelpMessage: '开启后群聊内禁止直接 Token 绑定（OIDC 不受影响），防止 Token 在群内泄露；被拒的 Token 将标记为不可用，需重新创建后私信绑定',
+                    component: 'Switch',
+                },
+                {
                     label: '',
                     component: 'Divider'
                 },
