@@ -223,9 +223,9 @@ data/
 
 <a href="https://www.star-history.com/?repos=Temmie0125%2Fmil-plugin&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Temmie0125/mil-plugin&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Temmie0125/mil-plugin&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Temmie0125/mil-plugin&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Temmie0125/mil-plugin&type=date&theme=dark&legend=top-left&sealed_token=nSbu4L7yA1sbXyNn7EhbGCpVDJv49Z85Gpmsz5AVoHx3viHH97mtcT8SqlvqnQy4lve_EZsee1B4Vlrsan3f5j7Et1JQZRHYagINLrXwaAtaU4xw6UwL8ir7AocU9ALS8cNGW5PKNiNxPf3sa_fE2RU0zP7Oo5dN189wl1AE5Y-aiBXny6Rcz4PcvwRI" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Temmie0125/mil-plugin&type=date&legend=top-left&sealed_token=nSbu4L7yA1sbXyNn7EhbGCpVDJv49Z85Gpmsz5AVoHx3viHH97mtcT8SqlvqnQy4lve_EZsee1B4Vlrsan3f5j7Et1JQZRHYagINLrXwaAtaU4xw6UwL8ir7AocU9ALS8cNGW5PKNiNxPf3sa_fE2RU0zP7Oo5dN189wl1AE5Y-aiBXny6Rcz4PcvwRI" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Temmie0125/mil-plugin&type=date&legend=top-left&sealed_token=nSbu4L7yA1sbXyNn7EhbGCpVDJv49Z85Gpmsz5AVoHx3viHH97mtcT8SqlvqnQy4lve_EZsee1B4Vlrsan3f5j7Et1JQZRHYagINLrXwaAtaU4xw6UwL8ir7AocU9ALS8cNGW5PKNiNxPf3sa_fE2RU0zP7Oo5dN189wl1AE5Y-aiBXny6Rcz4PcvwRI" />
  </picture>
 </a>
 
