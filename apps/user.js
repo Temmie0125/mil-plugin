@@ -1079,6 +1079,7 @@ export class miluser extends milPluginBase {
                         { title: `/${cmd} song <曲名>`, desc: '查看曲目图鉴（图片）' },
                         { title: `/${cmd} ill <曲名>`, desc: '查看曲绘' },
                         { title: `/${cmd} alias <曲名>`, desc: '查看别名' },
+                        { title: `/${cmd} table <曲名>`, desc: '查看定数表' },
                         { title: `/${cmd} setnick <原名> ---> <别名>`, desc: '设置别名（管理员）' }
                     ]
                 },

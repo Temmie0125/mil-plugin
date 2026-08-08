@@ -1,0 +1,65 @@
+{{extend defaultLayout}}
+
+{{block 'css'}}
+<link rel="stylesheet" href="{{_res_path}}html/table/table.css">
+{{/block}}
+
+{{block 'main'}}
+
+<div class="table-container">
+    <!-- 标题栏 -->
+    <div class="title-bar">
+        <div class="title-left">
+            {{if logoPath}}
+            <img class="logo" src="{{logoPath}}" alt="Milthm">
+            {{else}}
+            <span class="logo-text">Milthm</span>
+            {{/if}}
+            <span class="title-text">Chart Constant Table</span>
+        </div>
+        <div class="title-ver">Ver {{gameVersion}}</div>
+    </div>
+
+    <!-- 主标题 -->
+    <div class="main-title">{{titleNumber}}</div>
+
+    <!-- 分段 -->
+    {{each sections section}}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-line"></span>
+            <span class="section-label">{{section.label}}</span>
+            <span class="section-line-extend"></span>
+        </div>
+        {{each section.rows row}}
+        <div class="constant-row">
+            <div class="left-block">{{row.constantStr}}</div>
+            <div class="right-container">
+                {{each row.songs song}}
+                <div class="table-song-card">
+                    {{if song.illustration}}
+                    <img class="table-song-ill" src="{{song.illustration}}" alt="{{song.title}}">
+                    {{else}}
+                    <div class="table-song-ill table-song-ill-placeholder"></div>
+                    {{/if}}
+                    <span class="table-dif-badge" style="background: {{song.difficultyColor}}">{{song.difficultyType}}</span>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{/each}}
+    </div>
+    {{/each}}
+</div>
+
+<!-- 底部标识 -->
+<div class="createdbox">
+    <div class="mil-plugin">
+        <p>mil-plugin</p>
+    </div>
+    <div class="ver">
+        <p>{{version}}</p>
+    </div>
+</div>
+
+{{/block}}

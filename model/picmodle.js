@@ -148,5 +148,18 @@ export default {
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })
+    },
+
+    /**
+     * 渲染定数表图片
+     * @param {object} data - { titleNumber, gameVersion, background, logoPath, sections, isSP }
+     * @returns {Promise<any>}
+     */
+    async table(data) {
+        return enqueue(async () => {
+            let buff = await puppeteer.screenshot('table/table', data)
+            if (!buff) return '图片生成失败QAQ'
+            return segment.image(buff)
+        })
     }
 }

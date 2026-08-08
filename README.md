@@ -50,7 +50,7 @@ pnpm install
 
 * [ ] 优化界面设计
 
-* [ ] 定数表
+* [x] 定数表
 
 * [x] 接入云存档系统
 
@@ -73,6 +73,7 @@ pnpm install
 | `#mil alias <曲目>` | 查看现有别名
 | `#mil score <曲目>` | 查看单曲成绩
 | `#mil ill <曲目>` | 查看曲绘
+| `#mil table <定数>` | 查看定数表
 | `#mil recent` | 查看最近一次游玩成绩（需要云存档）
 | `#mil delete` | 删除bot端存档数据
 | `#mil bind` | 授权云存档（需要自行配置cilent_id和cilent_secret）
@@ -232,6 +233,7 @@ data/
 
 #### v1.1.0 — Milthm 6.0.0 适配
 
+- **定数表**: 现在可以通过`#mil table`查看定数表。
 - **在线/离线模式分离**：已绑定云平台时 B20 使用纯在线数据（与游戏内一致），未绑定时使用本地存档
 - **v2 成绩排除**：game_version < 4.0 的旧版成绩不再计入 Reality（仍可在单曲查询中查看）
 - **多指谱面排除**：`IsMania` 谱面不再参与 B20/Reality 计算
