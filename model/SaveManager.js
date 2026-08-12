@@ -552,16 +552,39 @@ export default class SaveManager {
     /**
      * 获取指定谱面的成绩（同谱面有新旧版本时返回最高分记录）
      * @param {string} chartId
+     * @param {'touch'|'keyboard'|'merge'} [mode] - 云存档模式过滤：touch/keyboard 时仅取同模式记录，
+     *                                               无 _cloudMode 标记的本地记录视为兼容双端；merge/缺省不筛选
      * @returns {object|null}
      */
-    getChartScore(chartId) {
+    getChartScore(chartId, mode) {
         this.ensureLoaded()
+        // 在线模式：优先使用对应端的云端在线记录，本地存档仅作兜底回退，
+        // 避免双端互通的存档分数覆盖另一端的在线成绩
+        if (this.isOnline()) {
+            let cloudBest = null
+            let localBest = null
+            for (let score of this.scores) {
+                if (score.chart_id !== chartId) continue
+                // 双端分离：单模式查询时排除另一端的云端记录
+                if ((mode === 'touch' || mode === 'keyboard') &&
+                    score._cloudMode && score._cloudMode !== mode) {
+                    continue
+                }
+                if (score._cloudMode) {
+                    if (!cloudBest || score.score > cloudBest.score) cloudBest = score
+                } else {
+                    if (!localBest || score.score > localBest.score) localBest = score
+                }
+            }
+            // 云端该端记录优先，云端无记录时回退到本地存档
+            return cloudBest || localBest
+        }
+        // 离线模式：本地存档取最高分（原行为，本地模式的数据参照）
         let best = null
         for (let score of this.scores) {
-            if (score.chart_id === chartId) {
-                if (!best || score.score > best.score) {
-                    best = score
-                }
+            if (score.chart_id !== chartId) continue
+            if (!best || score.score > best.score) {
+                best = score
             }
         }
         return best
@@ -743,21 +766,19 @@ export default class SaveManager {
         bestList.sort((a, b) => _getRlt(b) - _getRlt(a) || (b.score || 0) - (a.score || 0))
 
         // 4. 将云端条目映射为显示格式，记录 chart_id 用于后续去重
+        //    显示分/ACC 直接取云端对应端记录，不与本地存档取 max——
+        //    存档双端互通，避免一端的存档分数覆盖另一端的在线成绩
+        //    （本地存档仅用于下方 OVERFLOW 回退和离线模式的参照）
         let cloudChartIds = new Set()
         let cloudMapped = bestList.map(s => {
             let cid = s.chart_id
             cloudChartIds.add(cid)
-            let localScore = this.getChartScore(cid)
             return {
                 ...s,
                 _reality: _getRlt(s),
                 _difficulty: s._difficulty || this.getChartDifficulty(cid, getInfo),
-                _displayScore: localScore
-                    ? Math.max(localScore.score || 0, s.score || 0)
-                    : (s.score || 0),
-                _displayAccuracy: localScore
-                    ? Math.max(localScore.score_accuracy || 0, s.score_accuracy || 0)
-                    : (s.score_accuracy || 0)
+                _displayScore: s.score || 0,
+                _displayAccuracy: s.score_accuracy || 0
             }
         })
 

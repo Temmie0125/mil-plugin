@@ -1139,7 +1139,7 @@ async function renderScore(save, songKey, mode = 'merge') {
         let chart = info.chart[level]
         if (!chart || !chart.chartid) continue
 
-        let record = save.getChartScore(chart.chartid)
+        let record = save.getChartScore(chart.chartid, mode)
 
         // --- 推分建议计算 ---
         let pushText = null, pushClass = ''
