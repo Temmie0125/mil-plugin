@@ -20,6 +20,7 @@ import MilthmCloudAuth from '../components/MilthmCloudAuth.js'
 import NyaProfilerAuth from '../components/NyaProfilerAuth.js'
 import TokenBlacklist from '../components/TokenBlacklist.js'
 import UserSettingsStore from '../model/userSettings.js'
+import { safeId } from '../components/common.js'
 import SaveManager from '../model/SaveManager.js'
 import QRCode from 'qrcode'
 import { segment } from 'oicq'
@@ -312,7 +313,7 @@ export class milcloud extends milPluginBase {
             }
 
             // 写入临时文件并发送图片
-            let qrPath = `${Plugin_Path}/data/temp_qr_${e.user_id}.png`
+            let qrPath = `${Plugin_Path}/data/temp_qr_${safeId(e.user_id)}.png`
             try {
                 fs.writeFileSync(qrPath, qrBuf)
             } catch (err) {
@@ -891,7 +892,7 @@ export class milcloud extends milPluginBase {
                     logger.debug('[mil-cloud] 检测到二进制格式存档，按 SQLite 导入')
                     let dataDir = `${Plugin_Path}/data/saves`
                     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true })
-                    let tempPath = `${Plugin_Path}/data/temp_cloud_${userId}.db`
+                    let tempPath = `${Plugin_Path}/data/temp_cloud_${safeId(userId)}.db`
                     fs.writeFileSync(tempPath, fileBuffer)
                     result = await getSave.importSave(userId, tempPath, { noRecord: true })
                     try { fs.unlinkSync(tempPath) } catch { }

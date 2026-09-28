@@ -4,7 +4,7 @@ import getInfo from '../model/getInfo.js'
 import fCompute from '../model/fCompute.js'
 import { calcReality, realityv2, realityv3, parseGameVersion } from '../model/reality.js'
 import { calcPushSuggestion } from '../model/pushSuggestion.js'
-import { getFileInfo, getFileContent, makeForwardMsg } from '../components/common.js'
+import { getFileInfo, getFileContent, makeForwardMsg, safeId } from '../components/common.js'
 import getSave from '../model/getSave.js'
 import SaveManager from '../model/SaveManager.js'
 import UpdateLog from '../model/UpdateLog.js'
@@ -384,7 +384,7 @@ export class miluser extends milPluginBase {
             return true;
         }
         // 3. 保存为临时文件
-        const downloadPath = `${process.cwd()}/plugins/mil-plugin/data/temp_${e.user_id}.db`;
+        const downloadPath = `${process.cwd()}/plugins/mil-plugin/data/temp_${safeId(e.user_id)}.db`;
         try {
             fs.writeFileSync(downloadPath, fileContent);
         } catch (err) {

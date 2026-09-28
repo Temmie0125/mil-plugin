@@ -11,6 +11,7 @@ import fCompute from './fCompute.js'
 import { calcReality, calcB20Reality, parseGameVersion } from './reality.js'
 import Config from '../components/Config.js'
 import getInfo from './getInfo.js'
+import { safeId } from '../components/common.js'
 
 /**
  * BestLevel → 评级映射 (saves.db)
@@ -24,10 +25,10 @@ export default class SaveManager {
      */
     constructor(userId) {
         this.userId = userId
-        /** @type {string} 存档文件路径 */
-        this.savePath = `${process.cwd()}/plugins/mil-plugin/data/saves/${userId}.db`
+        /** @type {string} 存档文件路径（文件名经 safeId 处理，兼容官方机器人 OpenID 形式的 user_id） */
+        this.savePath = `${process.cwd()}/plugins/mil-plugin/data/saves/${safeId(userId)}.db`
         /** @type {string} 缓存数据路径 */
-        this.cachePath = `${process.cwd()}/plugins/mil-plugin/data/saves/${userId}.json`
+        this.cachePath = `${process.cwd()}/plugins/mil-plugin/data/saves/${safeId(userId)}.json`
         /** @type {any[]} 成绩数据 */
         this.scores = []
         /** @type {string} 用户名 */

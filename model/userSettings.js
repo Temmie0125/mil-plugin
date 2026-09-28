@@ -4,6 +4,7 @@
  * 存储路径: data/pluginData/<userId>_.json
  */
 import fs from 'fs'
+import { safeId } from '../components/common.js'
 
 const PLUGIN_DATA_DIR = `${process.cwd()}/plugins/mil-plugin/data/pluginData`
 
@@ -23,7 +24,7 @@ class UserSettingsStore {
      * @returns {{cloudMode: string}}
      */
     static getSettings(userId) {
-        let filePath = `${PLUGIN_DATA_DIR}/${userId}_.json`
+        let filePath = `${PLUGIN_DATA_DIR}/${safeId(userId)}_.json`
         try {
             if (fs.existsSync(filePath)) {
                 let data = JSON.parse(fs.readFileSync(filePath, 'utf8'))
@@ -44,7 +45,7 @@ class UserSettingsStore {
         if (!fs.existsSync(PLUGIN_DATA_DIR)) {
             fs.mkdirSync(PLUGIN_DATA_DIR, { recursive: true })
         }
-        let filePath = `${PLUGIN_DATA_DIR}/${userId}_.json`
+        let filePath = `${PLUGIN_DATA_DIR}/${safeId(userId)}_.json`
         // 合并现有设置，避免覆盖未传入的字段
         let existing = {}
         try {
@@ -61,7 +62,7 @@ class UserSettingsStore {
      * @param {string} userId - QQ号
      */
     static deleteSettings(userId) {
-        let filePath = `${PLUGIN_DATA_DIR}/${userId}_.json`
+        let filePath = `${PLUGIN_DATA_DIR}/${safeId(userId)}_.json`
         try {
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath)
@@ -75,7 +76,7 @@ class UserSettingsStore {
      * @returns {boolean}
      */
     static isFirstTime(userId) {
-        let filePath = `${PLUGIN_DATA_DIR}/${userId}_.json`
+        let filePath = `${PLUGIN_DATA_DIR}/${safeId(userId)}_.json`
         return !fs.existsSync(filePath)
     }
 }

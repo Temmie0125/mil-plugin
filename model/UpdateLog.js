@@ -17,6 +17,7 @@ import fCompute from './fCompute.js'
 import { calcReality, parseGameVersion } from './reality.js'
 import Config from '../components/Config.js'
 import logger from '../components/Logger.js'
+import { safeId } from '../components/common.js'
 
 const UPDATE_DIR = `${process.cwd()}/plugins/mil-plugin/data/updates`
 
@@ -32,8 +33,8 @@ export default class UpdateLog {
      */
     constructor(userId) {
         this.userId = userId
-        /** @type {string} 更新日志文件路径 */
-        this.logPath = `${UPDATE_DIR}/${userId}.json`
+        /** @type {string} 更新日志文件路径（文件名经 safeId 处理，兼容官方机器人 OpenID 形式的 user_id） */
+        this.logPath = `${UPDATE_DIR}/${safeId(userId)}.json`
         /** @type {object[]} 更新历史数组（最新在前） */
         this.history = []
     }
