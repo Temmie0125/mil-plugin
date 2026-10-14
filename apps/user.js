@@ -9,6 +9,7 @@ import getSave from '../model/getSave.js'
 import SaveManager from '../model/SaveManager.js'
 import UpdateLog from '../model/UpdateLog.js'
 import picmodle from '../model/picmodle.js'
+import qabutton from '../model/qabutton.js'
 import { buildRksHistory, renderUpdateImage } from '../model/updateRender.js'
 import milPluginBase from '../components/baseClass.js'
 import Version from '../components/Version.js'
@@ -615,7 +616,7 @@ export class miluser extends milPluginBase {
         if (!Config.getUserCfg('config', 'isGuild')) {
             e.reply("正在生成图片，请稍等一下哦！\n//·/w\\·\\\\", false, { recallMsg: 5 })
         }
-        send.send_with_At(e, await picmodle.b20(data))
+        send.send_with_At(e, [await picmodle.b20(data), ...qabutton.b20(e)])
 
         return true
     }
@@ -780,6 +781,7 @@ export class miluser extends milPluginBase {
         if (scores.length < 20) {
             res.push(`\nAP 曲目不足 20 首（当前仅 ${scores.length} 首），Reality 仅基于已有数据计算`)
         }
+        res.push(...qabutton.ap20(e))
         send.send_with_At(e, res)
 
         return true

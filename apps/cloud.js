@@ -13,6 +13,7 @@ import getSave from '../model/getSave.js'
 import getInfo from '../model/getInfo.js'
 import fCompute from '../model/fCompute.js'
 import { buildRksHistory, renderUpdateImage } from '../model/updateRender.js'
+import qabutton from '../model/qabutton.js'
 import milPluginBase from '../components/baseClass.js'
 import logger from '../components/Logger.js'
 
@@ -100,7 +101,10 @@ export class milcloud extends milPluginBase {
             if (await auth.isBound()) {
                 let isValid = await auth.ensureValidToken()
                 if (isValid) {
-                    send.send_with_At(e, `你已通过 OIDC 授权 Milthm 云存档~\n如需更换账号，请先使用 /${cmdHead} unbind 解除授权\n或使用 /${cmdHead} bind <token> 直接绑定 API 令牌`)
+                    send.send_with_At(e, [
+                        `你已通过 OIDC 授权 Milthm 云存档~\n如需更换账号，请先使用 /${cmdHead} unbind 解除授权\n或使用 /${cmdHead} bind <token> 直接绑定 API 令牌`,
+                        ...qabutton.bindSuccess(e)
+                    ])
                     return true
                 }
             }
@@ -111,7 +115,10 @@ export class milcloud extends milPluginBase {
             let auth = new MilthmCloudAuth(userId, '', '')
             await auth.loadToken()
             if (auth.isDirectTokenMode()) {
-                send.send_with_At(e, `你已通过 API 令牌绑定 Milthm 云存档~\n如需更换，请先使用 /${cmdHead} unbind 解除授权`)
+                send.send_with_At(e, [
+                    `你已通过 API 令牌绑定 Milthm 云存档~\n如需更换，请先使用 /${cmdHead} unbind 解除授权`,
+                    ...qabutton.bindSuccess(e)
+                ])
                 return true
             }
         }
@@ -120,7 +127,10 @@ export class milcloud extends milPluginBase {
         if (nyaApiKey) {
             let nyaAuth = new NyaProfilerAuth(userId, nyaApiKey)
             if (await nyaAuth.isBound()) {
-                send.send_with_At(e, `你已授权 Re Nya Profiler 查分器~\n如需更换账号，请先使用 /${cmdHead} unbind 解除授权`)
+                send.send_with_At(e, [
+                    `你已授权 Re Nya Profiler 查分器~\n如需更换账号，请先使用 /${cmdHead} unbind 解除授权`,
+                    ...qabutton.bindSuccess(e)
+                ])
                 return true
             }
         }
@@ -147,7 +157,7 @@ export class milcloud extends milPluginBase {
             lines.push(`⚠️ Token 为敏感信息，建议私聊 Bot 进行绑定以避免泄露`)
         }
         lines.push(`使用/${cmdHead} tk help 获取 Token 帮助`)
-        send.send_with_At(e, lines.join('\n'))
+        send.send_with_At(e, [lines.join('\n'), ...qabutton.bind(e, { hasOIDC: hasClientId })])
         return true
     }
 
@@ -229,11 +239,12 @@ export class milcloud extends milPluginBase {
                 }
             }
 
-            send.send_with_At(e,
+            send.send_with_At(e, [
                 `令牌绑定成功！\n` +
                 `已绑定账号: ${cloudUser.username}\n` +
-                `现在可以使用 /${cmdHead} update 更新云端存档~${recallNote}`
-            )
+                `现在可以使用 /${cmdHead} update 更新云端存档~${recallNote}`,
+                ...qabutton.bindSuccess(e)
+            ])
 
             // 自动撤回含 Token 的命令消息
             if (e.isGroup && e.group && (e.group.is_admin || e.group.is_owner)) {
@@ -498,11 +509,12 @@ export class milcloud extends milPluginBase {
                 } catch { /* 撤回失败不影响主流程 */ }
             }
 
-            send.send_with_At(e,
+            send.send_with_At(e, [
                 `授权成功！\n` +
                 `Milthm 用户名: ${username}\n` +
-                `现在可以使用 /${Config.getUserCfg('config', 'cmdhead')} update 更新查分数据~`
-            )
+                `现在可以使用 /${Config.getUserCfg('config', 'cmdhead')} update 更新查分数据~`,
+                ...qabutton.bindSuccess(e)
+            ])
         } catch (err) {
             if (err.message.includes('超时')) {
                 send.send_with_At(e, `授权超时自动取消，请重新 /${Config.getUserCfg('config', 'cmdhead')} bind 授权`)
@@ -585,11 +597,12 @@ export class milcloud extends milPluginBase {
                 if (!usernameHint){
                     logger.warn('[mil-cloud] 无法获取用户名，请检查端点配置')
                 }
-                send.send_with_At(e,
+                send.send_with_At(e, [
                     `授权成功！${usernameHint}\n` +
                     `现在可以使用 /${Config.getUserCfg('config', 'cmdhead')} update 更新云端存档~\n` +
-                    `Token 将自动续期，无需重复授权`
-                )
+                    `Token 将自动续期，无需重复授权`,
+                    ...qabutton.bindSuccess(e)
+                ])
                 return
             }
 

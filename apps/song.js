@@ -3,6 +3,7 @@ import send from '../model/send.js'
 import getInfo from '../model/getInfo.js'
 import fCompute from '../model/fCompute.js'
 import picmodle from '../model/picmodle.js'
+import qabutton from '../model/qabutton.js'
 import milPluginBase from '../components/baseClass.js'
 import Version from '../components/Version.js'
 import fs from 'fs'
@@ -54,10 +55,10 @@ export class milsong extends milPluginBase {
         let ids = getInfo.fuzzysongsnick(msg)
         if (ids[0]) {
             if (!ids[1]) {
-                send.send_with_At(e, await renderAtlas(ids[0]))
+                send.send_with_At(e, [await renderAtlas(ids[0]), ...qabutton.atlas(e, getInfo.info(ids[0])?.song)])
             } else {
                 this.choseMutiNick(e, ids, {}, async (e, id) => {
-                    send.send_with_At(e, await renderAtlas(id))
+                    send.send_with_At(e, [await renderAtlas(id), ...qabutton.atlas(e, getInfo.info(id)?.song)])
                 })
             }
         } else {
@@ -212,7 +213,8 @@ async function sendIll(e, id) {
         })
         send.send_with_At(e, [
             illImg,
-            `\n${info.song} - ${info.artist}\n画师：${illustrator}`
+            `\n${info.song} - ${info.artist}\n画师：${illustrator}`,
+            ...qabutton.ill(e, info.song)
         ])
     } else {
         send.send_with_At(e, `未找到"${info.song}"的曲绘文件QAQ`)
