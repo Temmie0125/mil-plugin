@@ -86,12 +86,12 @@
 <div id="container">
 <div class="ill-wrapper">
     <img class="ill-img" src="{{illustration}}" alt="illustration">
-    <div class="watermark">
+    <div class="watermark" {{if watermarkStyle}}style="{{@watermarkStyle}}"{{/if}}>
         <img class="wm-brand-logo" src="{{_res_path}}icon/Milthm.png" alt="Milthm">
-        <span class="wm-sep">|</span>
-        <div class="wm-illustrator">
-            <div class="wm-ill-label">Illustrator:</div>
-            <div class="wm-ill-name">{{illustrator}}</div>
+        <span class="wm-sep" {{if sepStyle}}style="{{@sepStyle}}"{{/if}}>|</span>
+        <div class="wm-illustrator" {{if illustratorStyle}}style="{{@illustratorStyle}}"{{/if}}>
+            <div class="wm-ill-label" {{if labelStyle}}style="{{@labelStyle}}"{{/if}}>Illustrator:</div>
+            <div class="wm-ill-name" {{if nameStyle}}style="{{@nameStyle}}"{{/if}}>{{illustrator}}</div>
         </div>
     </div>
 </div>

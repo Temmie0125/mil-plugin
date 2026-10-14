@@ -68,6 +68,7 @@ class MilRenderer extends Renderer {
         let layoutPath = `${resPath}html/common/layout/`
 
         let scale = (Config.getUserCfg('config', 'renderScale') || 100) / 100
+        let quality = Math.min(100, Math.max(1, Math.round(Number(Config.getUserCfg('config', 'randerQuality')) || 90)))
 
         data._res_path = resPath
         data._layout_path = layoutPath
@@ -97,9 +98,9 @@ class MilRenderer extends Renderer {
 
             const body = (await page.$("#container")) || (await page.$("body"))
             if (!body) {
-                buff = await page.screenshot({ type: "jpeg", quality: 90, fullPage: true })
+                buff = await page.screenshot({ type: "jpeg", quality, fullPage: true })
             } else {
-                buff = await body.screenshot({ type: "jpeg", quality: 90 })
+                buff = await body.screenshot({ type: "jpeg", quality })
             }
 
             if (!Buffer.isBuffer(buff)) buff = Buffer.from(buff)

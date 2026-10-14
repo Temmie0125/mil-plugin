@@ -6,6 +6,16 @@
     <link rel="shortcut icon" href="#" />
     <link rel="stylesheet" type="text/css" href="{{_res_path}}html/common/common.css" />
     {{block 'css'}}{{/block}}
+    {{if renderNoJs}}
+    <style>
+        /* shotium 等无 JS 渲染器不执行字号自适应脚本，改用省略号防止长文本溢出 */
+        [name="pvis"] {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+    {{/if}}
     <title>mil-plugin</title>
 </head>
 <body class="elem-hydro default-mode {{bodyClass}}" {{@sys.scale}}>

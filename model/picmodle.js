@@ -1,8 +1,11 @@
 /**
  * 图片渲染协调器
- * 协调 puppeteer 渲染各类图片
+ * 依据 renderer 配置在 插件独立 Puppeteer 与 宿主 shotium 渲染器间选择
+ * 并通过队列串行化渲染请求，避免并发访问浏览器
  */
 import puppeteer from './puppeteer.js'
+import hostShotium from './renderers/hostShotium.js'
+import { buildIllWatermarkStyle } from './renderers/staticStyle.js'
 import Config from '../components/Config.js'
 import logger from '../components/Logger.js'
 import { segment } from "oicq"
@@ -33,6 +36,61 @@ async function processQueue() {
     isRendering = false
 }
 
+let lastBackend = ''
+
+/**
+ * 依据配置解析当前应使用的渲染后端
+ * @returns {Promise<'puppeteer'|'shotium'>}
+ */
+async function pickBackend() {
+    const selected = String(Config.getUserCfg('config', 'renderer') || 'puppeteer').trim().toLowerCase()
+    if (selected === 'shotium') return 'shotium'
+    if (selected === 'auto') {
+        return (await hostShotium.activeName()) === 'shotium' ? 'shotium' : 'puppeteer'
+    }
+    return 'puppeteer'
+}
+
+/**
+ * 使用指定后端渲染；宿主渲染器不可用或渲染失败时回退到独立 Puppeteer
+ * @param {'puppeteer'|'shotium'} backend
+ * @param {string} tplName 模板名，如 "b20/b20"
+ * @param {object} data 模板数据
+ * @returns {Promise<Buffer|false>}
+ */
+async function renderWith(backend, tplName, data) {
+    if (backend === 'shotium') {
+        if (await hostShotium.available('shotium')) {
+            let buff = false
+            try {
+                buff = await hostShotium.screenshot(tplName, data)
+            } catch (err) {
+                logger.error(`[mil-plugin] 宿主 shotium 渲染异常：${tplName}`, err)
+            }
+            if (buff) return buff
+            logger.warn(`[mil-plugin] 宿主 shotium 渲染失败，本次回退独立 Puppeteer：${tplName}`)
+        } else {
+            logger.warn('[mil-plugin] 宿主 shotium 渲染器不可用，本次回退独立 Puppeteer（请确认 renderers/shotium 已安装）')
+        }
+    }
+    return puppeteer.screenshot(tplName, data)
+}
+
+/**
+ * 按当前配置渲染并输出后端切换日志
+ * @param {string} tplName 模板名，如 "b20/b20"
+ * @param {object} data 模板数据
+ * @returns {Promise<Buffer|false>}
+ */
+async function renderImage(tplName, data) {
+    const backend = await pickBackend()
+    if (backend !== lastBackend) {
+        lastBackend = backend
+        logger.info(`[mil-plugin] 当前渲染器：${backend === 'shotium' ? 'shotium（复用宿主，模板 JS 不执行）' : 'puppeteer（插件独立 Chromium）'}`)
+    }
+    return renderWith(backend, tplName, data)
+}
+
 export default {
     /**
      * 渲染B20图片
@@ -41,7 +99,7 @@ export default {
      */
     async b20(data) {
         return enqueue(async () => {
-            let buff = await puppeteer.screenshot('b20/b20', data)
+            let buff = await renderImage('b20/b20', data)
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })
@@ -54,7 +112,7 @@ export default {
      */
     async atlas(data) {
         return enqueue(async () => {
-            let buff = await puppeteer.screenshot('atlas/atlas', data)
+            let buff = await renderImage('atlas/atlas', data)
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })
@@ -67,7 +125,7 @@ export default {
      */
     async score(data) {
         return enqueue(async () => {
-            let buff = await puppeteer.screenshot('score/score', data)
+            let buff = await renderImage('score/score', data)
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })
@@ -80,7 +138,7 @@ export default {
      */
     async help(data) {
         return enqueue(async () => {
-            let buff = await puppeteer.screenshot('help/help', data)
+            let buff = await renderImage('help/help', data)
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })
@@ -93,7 +151,7 @@ export default {
      */
     async update(data) {
         return enqueue(async () => {
-            let buff = await puppeteer.screenshot('update/update', data)
+            let buff = await renderImage('update/update', data)
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })
@@ -107,7 +165,12 @@ export default {
      */
     async ill(data) {
         return enqueue(async () => {
-            let buff = await puppeteer.screenshot('ill/ill', data)
+            const backend = await pickBackend()
+            if (backend === 'shotium') {
+                // shotium 不执行模板脚本，水印布局由服务端按图片尺寸预算（与 ill.art 内脚本同公式）
+                Object.assign(data, buildIllWatermarkStyle(data.illustration))
+            }
+            let buff = await renderWith(backend, 'ill/ill', data)
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })
@@ -118,7 +181,7 @@ export default {
      */
     async recent(data) {
         return enqueue(async () => {
-            let buff = await puppeteer.screenshot('recent/recent', data)
+            let buff = await renderImage('recent/recent', data)
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })
@@ -131,7 +194,7 @@ export default {
      */
     async guess(data) {
         return enqueue(async () => {
-            let buff = await puppeteer.screenshot('guess/guess', data)
+            let buff = await renderImage('guess/guess', data)
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })
@@ -144,7 +207,7 @@ export default {
      */
     async myset(data) {
         return enqueue(async () => {
-            let buff = await puppeteer.screenshot('myset/myset', data)
+            let buff = await renderImage('myset/myset', data)
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })
@@ -157,7 +220,7 @@ export default {
      */
     async table(data) {
         return enqueue(async () => {
-            let buff = await puppeteer.screenshot('table/table', data)
+            let buff = await renderImage('table/table', data)
             if (!buff) return '图片生成失败QAQ'
             return segment.image(buff)
         })

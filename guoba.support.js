@@ -22,6 +22,21 @@ export function supportGuoba() {
                     component: 'SOFT_GROUP_BEGIN'
                 },
                 {
+                    field: 'renderer',
+                    label: '渲染器',
+                    bottomHelpMessage: 'puppeteer：插件独立 Chromium，功能最全（模板JS正常执行）；shotium：复用宿主 TRSS-Yunzai 的 shotium 渲染器，内存开销最低（不执行JS，长文本省略号截断）；auto：宿主渲染器为 shotium 时用 shotium，否则用 puppeteer',
+                    component: 'Select',
+                    required: false,
+                    componentProps: {
+                        options: [
+                            { label: 'puppeteer（插件独立 Chromium）', value: 'puppeteer' },
+                            { label: 'shotium（复用宿主，低内存开销）', value: 'shotium' },
+                            { label: 'auto（跟随宿主配置）', value: 'auto' },
+                        ],
+                        placeholder: '请选择渲染器',
+                    },
+                },
+                {
                     field: 'renderScale',
                     label: '渲染精度',
                     bottomHelpMessage: '对所有的图片生效，设置渲染精度',

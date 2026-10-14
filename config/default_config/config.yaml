@@ -1,4 +1,11 @@
 #  ************ 【渲染设置】 *************
+#  渲染器选择:
+#  puppeteer - 插件独立 Chromium，功能最全（模板 JS 正常执行）
+#  shotium   - 复用宿主 TRSS-Yunzai 的 shotium 渲染器，内存开销最低
+#              （引擎不执行 JS：长文本以省略号截断、star 主题星空不绘制、曲绘水印由服务端预算）
+#  auto      - 宿主渲染器配置为 shotium 时使用 shotium，否则使用 puppeteer
+renderer: "puppeteer"
+
 #  渲染精细度，可选值50~200，建议100
 renderScale: 100
 

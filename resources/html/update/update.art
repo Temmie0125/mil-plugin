@@ -144,7 +144,7 @@
     </div>
 </div>
 
-{{if theme == "star"}}
+{{if theme == "star" && !renderNoJs}}
 <canvas id="stars"></canvas>
 <script>
     themeStar();
